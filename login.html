@@ -26,11 +26,8 @@
             padding: 8px;
             width: 100%;
         }
-        .note {
-            margin-top: 20px;
-            background: #f8f8f8;
-            padding: 10px;
-            border-radius: 5px;
+        #facultyCredentials {
+            display: none;
         }
     </style>
 </head>
@@ -38,30 +35,36 @@
 
     <div class="login-container">
         <h2>Login</h2>
-        <select id="userType">
+        <select id="userType" onchange="handleUserTypeChange()">
             <option value="student">Student</option>
             <option value="faculty">Faculty</option>
         </select>
-        <input type="text" id="username" placeholder="User ID">
-        <input type="password" id="password" placeholder="Password">
-        <button onclick="login()">Login</button>
-        <p id="errorMessage" style="color: red;"></p>
+
+        <div id="facultyCredentials">
+            <input type="text" id="username" placeholder="User ID">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="login()">Login</button>
+            <p id="errorMessage" style="color: red;"></p>
+        </div>
     </div>
 
-
     <script>
-        function login() {
+        function handleUserTypeChange() {
             const userType = document.getElementById("userType").value;
+            if (userType === "student") {
+                window.location.href = "studentinfo.html"; // Redirect immediately for students
+            } else {
+                document.getElementById("facultyCredentials").style.display = "block"; // Show faculty login
+            }
+        }
+
+        function login() {
             const username = document.getElementById("username").value;
             const password = document.getElementById("password").value;
-            if (username === "12345" && password === "abcd") {
-                alert(userType + " logged in successfully!");
 
-                if (userType === "student") {
-                    window.location.href = "studentinfo.html"; // Redirect to student page
-                } else {
-                    window.location.href = "index.html"; // Redirect to faculty page
-                }
+            if (username === "12345" && password === "abcd") {
+                alert("Faculty logged in successfully!");
+                window.location.href = "index.html"; // Redirect to faculty page
             } else {
                 document.getElementById("errorMessage").textContent = "Invalid username or password!";
             }
