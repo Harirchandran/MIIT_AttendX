@@ -372,138 +372,170 @@
     }
 
     async function fetchAttendanceDetails() {
-      const fetchBtn = document.getElementById('fetchAttendanceDetailsBtn');
-      showSpinnerOnButton(fetchBtn);
-      const course = document.getElementById('detailCourse').value;
-      const semester = parseInt(document.getElementById('detailSemester').value, 10);
-      const duration = document.getElementById('detailDuration').value;
-      let fromDate, toDate;
+  const fetchBtn = document.getElementById('fetchAttendanceDetailsBtn');
+  showSpinnerOnButton(fetchBtn);
+  const course = document.getElementById('detailCourse').value;
+  const semester = parseInt(document.getElementById('detailSemester').value, 10);
+  const duration = document.getElementById('detailDuration').value;
+  let fromDate, toDate;
 
-      if (duration === 'single') {
-        fromDate = toDate = document.getElementById('singleDate').value;
-        if (!fromDate) {
-          alert("Please select a date.");
-          hideSpinnerOnButton(fetchBtn);
-          return;
+  if (duration === 'single') {
+    fromDate = toDate = document.getElementById('singleDate').value;
+    if (!fromDate) {
+      alert("Please select a date.");
+      hideSpinnerOnButton(fetchBtn);
+      return;
+    }
+  } else {
+    fromDate = document.getElementById('fromDate').value;
+    toDate = document.getElementById('toDate').value;
+    if (!fromDate || !toDate) {
+      alert("Please select both from and to dates.");
+      hideSpinnerOnButton(fetchBtn);
+      return;
+    }
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('attendance')
+      .select('*')
+      .eq('course', course)
+      .eq('semester', semester)
+      .gte('date', fromDate)
+      .lte('date', toDate);
+
+    if (error) {
+      console.error("Error fetching attendance details:", error);
+      alert("Error fetching data.");
+      hideSpinnerOnButton(fetchBtn);
+      return;
+    }
+    if (data.length === 0) {
+      alert("No attendance records found for the selected criteria.");
+      hideSpinnerOnButton(fetchBtn);
+      return;
+    }
+
+    const morningHours = ["9:30-10:30", "10:30-11:30", "11:30-12:30"];
+    const afternoonHours = ["1:30-2:30", "2:30-3:30"];
+
+    const dailyAttendance = {};
+    const allRollNumbers = new Set();
+
+    data.forEach(session => {
+      const date = session.date;
+      if (!dailyAttendance[date]) dailyAttendance[date] = {};
+      for (const roll in session.data) {
+        allRollNumbers.add(roll);
+        if (!dailyAttendance[date][roll]) {
+          dailyAttendance[date][roll] = { morning: {}, afternoon: {} };
         }
-      } else {
-        fromDate = document.getElementById('fromDate').value;
-        toDate = document.getElementById('toDate').value;
-        if (!fromDate || !toDate) {
-          alert("Please select both from and to dates.");
-          hideSpinnerOnButton(fetchBtn);
-          return;
+        if (morningHours.includes(session.hour)) {
+          dailyAttendance[date][roll].morning[session.hour] = session.data[roll];
+        } else if (afternoonHours.includes(session.hour)) {
+          dailyAttendance[date][roll].afternoon[session.hour] = session.data[roll];
         }
       }
+    });
 
-      try {
-        const { data, error } = await supabaseClient
-          .from('attendance')
-          .select('*')
-          .eq('course', course)
-          .eq('semester', semester)
-          .gte('date', fromDate)
-          .lte('date', toDate);
+    const dateColumns = Object.keys(dailyAttendance).sort();
 
-        if (error) {
-          console.error("Error fetching attendance details:", error);
-          alert("Error fetching data.");
-          hideSpinnerOnButton(fetchBtn);
-          return;
-        }
-        if (data.length === 0) {
-          alert("No attendance records found for the selected criteria.");
-          hideSpinnerOnButton(fetchBtn);
-          return;
-        }
+    // Create a caption with course, semester, and time span
+    let captionText = "";
+    if (duration === "single") {
+      captionText = `${course} - Semester ${semester} on ${fromDate}`;
+    } else {
+      captionText = `${course} - Semester ${semester} from ${fromDate} to ${toDate}`;
+    }
 
-        const morningHours = ["9:30-10:30", "10:30-11:30", "11:30-12:30"];
-        const afternoonHours = ["1:30-2:30", "2:30-3:30"];
+    let tableHTML = `<caption class="text-center fw-bold fs-5 mb-3">${captionText}</caption>`;
+    tableHTML += '<thead class="table-light"><tr><th>Roll Number</th>';
+    dateColumns.forEach(date => { tableHTML += `<th>${date}</th>`; });
+    tableHTML += '<th>Total Attendance</th><th>Percentage</th></tr></thead><tbody>';
 
-        const dailyAttendance = {};
-        const allRollNumbers = new Set();
+    allRollNumbers.forEach(roll => {
+      let studentTotal = 0;
+      tableHTML += `<tr><td>${roll}</td>`;
+      dateColumns.forEach(date => {
+        let dayScore = 0;
+        const studentDay = dailyAttendance[date][roll];
+        let statusArr = [];
 
-        data.forEach(session => {
-          const date = session.date;
-          if (!dailyAttendance[date]) dailyAttendance[date] = {};
-          for (const roll in session.data) {
-            allRollNumbers.add(roll);
-            if (!dailyAttendance[date][roll]) {
-              dailyAttendance[date][roll] = { morning: {}, afternoon: {} };
-            }
-            if (morningHours.includes(session.hour)) {
-              dailyAttendance[date][roll].morning[session.hour] = session.data[roll];
-            } else if (afternoonHours.includes(session.hour)) {
-              dailyAttendance[date][roll].afternoon[session.hour] = session.data[roll];
-            }
+        // Build statuses for morning hours (3 hours)
+        morningHours.forEach(hour => {
+          let status = "a";
+          if (studentDay && (hour in studentDay.morning)) {
+            status = studentDay.morning[hour] === true ? "p" : "a";
           }
+          statusArr.push(status);
+        });
+        // Build statuses for afternoon hours (2 hours)
+        afternoonHours.forEach(hour => {
+          let status = "a";
+          if (studentDay && (hour in studentDay.afternoon)) {
+            status = studentDay.afternoon[hour] === true ? "p" : "a";
+          }
+          statusArr.push(status);
         });
 
-        const dateColumns = Object.keys(dailyAttendance).sort();
-        let tableHTML = '<thead class="table-light"><tr><th>Roll Number</th>';
-        dateColumns.forEach(date => { tableHTML += `<th>${date}</th>`; });
-        tableHTML += '<th>Total Attendance</th><th>Percentage</th></tr></thead><tbody>';
+        // Calculate day score based on complete blocks:
+        // If all 3 morning hours are present then add 0.5; similarly for the 2 afternoon hours.
+        if (studentDay) {
+          if (Object.keys(studentDay.morning).length === morningHours.length) {
+            const fullMorning = morningHours.every(hour => studentDay.morning[hour] === true);
+            dayScore += fullMorning ? 0.5 : 0;
+          }
+          if (Object.keys(studentDay.afternoon).length === afternoonHours.length) {
+            const fullAfternoon = afternoonHours.every(hour => studentDay.afternoon[hour] === true);
+            dayScore += fullAfternoon ? 0.5 : 0;
+          }
+        }
+        studentTotal += dayScore;
+        tableHTML += `<td>${dayScore} (${statusArr.join(", ")})</td>`;
+      });
+      const totalDays = dateColumns.length;
+      const percentage = totalDays > 0 ? ((studentTotal / totalDays) * 100).toFixed(2) : '0';
+      tableHTML += `<td>${studentTotal}</td><td>${percentage}%</td></tr>`;
+    });
+    tableHTML += '</tbody>';
 
-        allRollNumbers.forEach(roll => {
-          let studentTotal = 0;
-          tableHTML += `<tr><td>${roll}</td>`;
-          dateColumns.forEach(date => {
-            let dayScore = 0;
-            const studentDay = dailyAttendance[date][roll];
-            if (studentDay) {
-              if (Object.keys(studentDay.morning).length === morningHours.length) {
-                const fullMorning = morningHours.every(hour => studentDay.morning[hour] === true);
-                dayScore += fullMorning ? 0.5 : 0;
-              }
-              if (Object.keys(studentDay.afternoon).length === afternoonHours.length) {
-                const fullAfternoon = afternoonHours.every(hour => studentDay.afternoon[hour] === true);
-                dayScore += fullAfternoon ? 0.5 : 0;
-              }
-            }
-            studentTotal += dayScore;
-            tableHTML += `<td>${dayScore}</td>`;
-          });
-          const totalDays = dateColumns.length;
-          const percentage = totalDays > 0 ? ((studentTotal / totalDays) * 100).toFixed(2) : '0';
-          tableHTML += `<td>${studentTotal}</td><td>${percentage}%</td></tr>`;
-        });
-        tableHTML += '</tbody>';
+    document.getElementById('attendanceDetailsTable').innerHTML = tableHTML;
+    document.getElementById('attendanceDetailsTableContainer').style.display = 'block';
+  } catch (err) {
+    console.error("Error processing attendance details:", err);
+    alert("Error processing data.");
+  } finally {
+    hideSpinnerOnButton(fetchBtn);
+  }
+}
 
-        document.getElementById('attendanceDetailsTable').innerHTML = tableHTML;
-        document.getElementById('attendanceDetailsTableContainer').style.display = 'block';
-      } catch (err) {
-        console.error("Error processing attendance details:", err);
-        alert("Error processing data.");
-      } finally {
-        hideSpinnerOnButton(fetchBtn);
-      }
-    }
+function exportDetailsToExcel() {
+  const table = document.getElementById('attendanceDetailsTable');
+  const worksheet = XLSX.utils.table_to_sheet(table);
+  const workbook = XLSX.utils.book_new();
 
-    function exportDetailsToExcel() {
-      const table = document.getElementById('attendanceDetailsTable');
-      const worksheet = XLSX.utils.table_to_sheet(table);
-      const workbook = XLSX.utils.book_new();
+  const course = document.getElementById('detailCourse').value;
+  const sem = document.getElementById('detailSemester').value;
 
-      const course = document.getElementById('detailCourse').value;
-      const sem = document.getElementById('detailSemester').value;
+  let fileName = `Individual_Attendance_${course}_Sem${sem}`;
+  const duration = document.getElementById('detailDuration').value;
 
-      let fileName = `Individual_Attendance_${course}_Sem${sem}`;
-      const duration = document.getElementById('detailDuration').value;
-      
-      if (duration === 'single') {
-        const singleDate = document.getElementById('singleDate').value;
-        fileName += `_${singleDate}`;
-      } else {
-        const fromDate = document.getElementById('fromDate').value;
-        const toDate = document.getElementById('toDate').value;
-        fileName += `_${fromDate}_to_${toDate}`;
-      }
-      
-      fileName += ".xlsx";
+  if (duration === 'single') {
+    const singleDate = document.getElementById('singleDate').value;
+    fileName += `_${singleDate}`;
+  } else {
+    const fromDate = document.getElementById('fromDate').value;
+    const toDate = document.getElementById('toDate').value;
+    fileName += `_${fromDate}_to_${toDate}`;
+  }
 
-      XLSX.utils.book_append_sheet(workbook, worksheet, "IndividualAttendance");
-      XLSX.writeFile(workbook, fileName);
-    }
+  fileName += ".xlsx";
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, "IndividualAttendance");
+  XLSX.writeFile(workbook, fileName);
+}
+
 
     /*************** Attendance Report Functions ******************/
     const hours = [
