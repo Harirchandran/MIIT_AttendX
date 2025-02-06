@@ -48,21 +48,20 @@
         <p id="errorMessage" style="color: red;"></p>
     </div>
 
-    <div class="note">
-        <h3>Test Credentials</h3>
-        <p><strong>User ID:</strong> 12345</p>
-        <p><strong>Password:</strong> abcd</p>
-    </div>
 
     <script>
         function login() {
             const userType = document.getElementById("userType").value;
             const username = document.getElementById("username").value;
             const password = document.getElementById("password").value;
-
             if (username === "12345" && password === "abcd") {
                 alert(userType + " logged in successfully!");
-                window.location.href = "index.html"; // Redirect to main page
+
+                if (userType === "student") {
+                    window.location.href = "studentinfo.html"; // Redirect to student page
+                } else {
+                    window.location.href = "index.html"; // Redirect to faculty page
+                }
             } else {
                 document.getElementById("errorMessage").textContent = "Invalid username or password!";
             }
