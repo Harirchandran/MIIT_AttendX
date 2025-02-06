@@ -403,108 +403,128 @@
     }
 
     async function fetchAttendanceDetails() {
-      const course = document.getElementById('detailCourse').value;
-      const semester = parseInt(document.getElementById('detailSemester').value, 10);
-      const duration = document.getElementById('detailDuration').value;
-      let fromDate, toDate;
+  const course = document.getElementById('detailCourse').value;
+  const semester = parseInt(document.getElementById('detailSemester').value, 10);
+  const duration = document.getElementById('detailDuration').value;
+  let fromDate, toDate;
 
-      if (duration === 'single') {
-        fromDate = toDate = document.getElementById('singleDate').value;
-        if (!fromDate) {
-          alert("Please select a date.");
-          return;
-        }
-      } else {
-        fromDate = document.getElementById('fromDate').value;
-        toDate = document.getElementById('toDate').value;
-        if (!fromDate || !toDate) {
-          alert("Please select both from and to dates.");
-          return;
-        }
-      }
-
-      try {
-        // Fetch all records for the given course, semester, and date range
-        const { data, error } = await supabaseClient
-          .from('attendance')
-          .select('*')
-          .eq('course', course)
-          .eq('semester', semester)
-          .gte('date', fromDate)
-          .lte('date', toDate);
-
-        if (error) {
-          console.error("Error fetching attendance details:", error);
-          alert("Error fetching data.");
-          return;
-        }
-        if (data.length === 0) {
-          alert("No attendance records found for the selected criteria.");
-          return;
-        }
-        // Process data into a per-day, per-student aggregation
-        const dailyAttendance = {};
-        // Maintain a set of all roll numbers
-        const allRollNumbers = new Set();
-
-        data.forEach(session => {
-          const date = session.date;
-          if (!dailyAttendance[date]) dailyAttendance[date] = {};
-          for (const roll in session.data) {
-            allRollNumbers.add(roll);
-            if (!dailyAttendance[date][roll]) {
-              dailyAttendance[date][roll] = { present: 0, total: 0 };
-            }
-            dailyAttendance[date][roll].total += 1;
-            if (session.data[roll]) {
-              dailyAttendance[date][roll].present += 1;
-            }
-          }
-        });
-
-        // Get a sorted list of date columns in ascending order
-        const dateColumns = Object.keys(dailyAttendance).sort();
-
-        // Build table header: Roll Number | Date1 | Date2 | ... | Total Attendance | Percentage
-        let tableHTML = '<thead class="table-light"><tr><th>Roll Number</th>';
-        dateColumns.forEach(date => {
-          tableHTML += `<th>${date}</th>`;
-        });
-        tableHTML += '<th>Total Attendance</th><th>Percentage</th></tr></thead><tbody>';
-
-        // For each roll number, compute daily attendance and overall totals.
-        allRollNumbers.forEach(roll => {
-          let totalScore = 0;
-          tableHTML += `<tr><td>${roll}</td>`;
-          dateColumns.forEach(date => {
-            let cellValue = 0;
-            if (dailyAttendance[date][roll]) {
-              const { present, total } = dailyAttendance[date][roll];
-              if (present === total) {
-                cellValue = 1;
-              } else if (present === 0) {
-                cellValue = 0;
-              } else {
-                cellValue = 0.5;
-              }
-            }
-            totalScore += cellValue;
-            tableHTML += `<td>${cellValue}</td>`;
-          });
-          const totalDays = dateColumns.length;
-          const percentage = totalDays > 0 ? ((totalScore / totalDays) * 100).toFixed(2) : '0';
-          tableHTML += `<td>${totalScore}</td><td>${percentage}%</td></tr>`;
-        });
-        tableHTML += '</tbody>';
-
-        // Populate the table container
-        document.getElementById('attendanceDetailsTable').innerHTML = tableHTML;
-        document.getElementById('attendanceDetailsTableContainer').style.display = 'block';
-      } catch (err) {
-        console.error("Error processing attendance details:", err);
-        alert("Error processing data.");
-      }
+  // Determine the date range based on the duration selection
+  if (duration === 'single') {
+    fromDate = toDate = document.getElementById('singleDate').value;
+    if (!fromDate) {
+      alert("Please select a date.");
+      return;
     }
+  } else {
+    fromDate = document.getElementById('fromDate').value;
+    toDate = document.getElementById('toDate').value;
+    if (!fromDate || !toDate) {
+      alert("Please select both from and to dates.");
+      return;
+    }
+  }
+
+  try {
+    // Fetch all attendance records for the specified course, semester, and date range.
+    const { data, error } = await supabaseClient
+      .from('attendance')
+      .select('*')
+      .eq('course', course)
+      .eq('semester', semester)
+      .gte('date', fromDate)
+      .lte('date', toDate);
+
+    if (error) {
+      console.error("Error fetching attendance details:", error);
+      alert("Error fetching data.");
+      return;
+    }
+    if (data.length === 0) {
+      alert("No attendance records found for the selected criteria.");
+      return;
+    }
+
+    // Define session hours for morning and afternoon.
+    const morningHours = ["9:30-10:30", "10:30-11:30", "11:30-12:30"];
+    const afternoonHours = ["1:30-2:30", "2:30-3:30"];
+
+    // Group the attendance data by date and then by student (roll number)
+    const dailyAttendance = {};
+    const allRollNumbers = new Set();
+
+    data.forEach(session => {
+      const date = session.date;
+      // Initialize the day if not present
+      if (!dailyAttendance[date]) {
+        dailyAttendance[date] = {};
+      }
+      // For each student in the session, store their attendance per session
+      for (const roll in session.data) {
+        allRollNumbers.add(roll);
+        // Initialize the student entry for the day if needed
+        if (!dailyAttendance[date][roll]) {
+          dailyAttendance[date][roll] = { morning: {}, afternoon: {} };
+        }
+        if (morningHours.includes(session.hour)) {
+          dailyAttendance[date][roll].morning[session.hour] = session.data[roll];
+        } else if (afternoonHours.includes(session.hour)) {
+          dailyAttendance[date][roll].afternoon[session.hour] = session.data[roll];
+        }
+      }
+    });
+
+    // Get a sorted list of the dates (columns)
+    const dateColumns = Object.keys(dailyAttendance).sort();
+
+    // Build the table header: Roll Number | Date1 | Date2 | ... | Total Attendance | Percentage
+    let tableHTML = '<thead class="table-light"><tr><th>Roll Number</th>';
+    dateColumns.forEach(date => {
+      tableHTML += `<th>${date}</th>`;
+    });
+    tableHTML += '<th>Total Attendance</th><th>Percentage</th></tr></thead><tbody>';
+
+    // For each student (roll), compute the daily and overall attendance
+    allRollNumbers.forEach(roll => {
+      let studentTotal = 0;
+      tableHTML += `<tr><td>${roll}</td>`;
+      // For each date, compute the daily score based on session attendance
+      dateColumns.forEach(date => {
+        let dayScore = 0;
+        // Check if attendance exists for the student on this day; if not, assume 0.
+        const studentDay = dailyAttendance[date][roll];
+        if (studentDay) {
+          // For morning: if attendance for all morning hours exists
+          if (Object.keys(studentDay.morning).length === morningHours.length) {
+            // Check if student was present in every morning hour
+            const fullMorning = morningHours.every(hour => studentDay.morning[hour] === true);
+            dayScore += fullMorning ? 0.5 : 0;
+          }
+          // For afternoon: if attendance for all afternoon hours exists
+          if (Object.keys(studentDay.afternoon).length === afternoonHours.length) {
+            const fullAfternoon = afternoonHours.every(hour => studentDay.afternoon[hour] === true);
+            dayScore += fullAfternoon ? 0.5 : 0;
+          }
+        }
+        studentTotal += dayScore;
+        tableHTML += `<td>${dayScore}</td>`;
+      });
+      // Calculate overall attendance percentage for the student across all days
+      const totalDays = dateColumns.length;
+      const percentage = totalDays > 0 ? ((studentTotal / totalDays) * 100).toFixed(2) : '0';
+      tableHTML += `<td>${studentTotal}</td><td>${percentage}%</td></tr>`;
+    });
+    tableHTML += '</tbody>';
+
+    // Populate the attendance details table container and display it
+    document.getElementById('attendanceDetailsTable').innerHTML = tableHTML;
+    document.getElementById('attendanceDetailsTableContainer').style.display = 'block';
+    
+  } catch (err) {
+    console.error("Error processing attendance details:", err);
+    alert("Error processing data.");
+  }
+}
+
 
     // Function to export the individual attendance table to Excel
     // Function to export the individual attendance table to Excel
