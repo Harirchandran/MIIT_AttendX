@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Page</title>
+    <title>Attendance Management - Login</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -11,40 +11,66 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
+            background-color: #f4f4f4;
             flex-direction: column;
         }
         .login-container {
+            background: white;
             padding: 20px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
             text-align: center;
+            width: 300px;
         }
-        input, select, button {
-            display: block;
-            margin: 10px auto;
-            padding: 8px;
+        h2 {
+            margin-bottom: 10px;
+        }
+        select, input, button {
             width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
         }
         #facultyCredentials {
             display: none;
+        }
+        #errorMessage {
+            color: red;
+            font-size: 14px;
+            margin-top: 5px;
         }
     </style>
 </head>
 <body>
 
     <div class="login-container">
-        <h2>Login</h2>
+        <h2>Attendance Management System</h2>
+        <p>Please select your role to proceed.</p>
+
         <select id="userType" onchange="handleUserTypeChange()">
             <option value="student">Student</option>
             <option value="faculty">Faculty</option>
         </select>
 
+        <!-- Student Login Button -->
+        <button id="studentLogin" onclick="studentLogin()">Login as Student</button>
+
+        <!-- Faculty Login Fields -->
         <div id="facultyCredentials">
             <input type="text" id="username" placeholder="User ID">
             <input type="password" id="password" placeholder="Password">
-            <button onclick="login()">Login</button>
-            <p id="errorMessage" style="color: red;"></p>
+            <button onclick="facultyLogin()">Login as Faculty</button>
+            <p id="errorMessage"></p>
         </div>
     </div>
 
@@ -52,18 +78,23 @@
         function handleUserTypeChange() {
             const userType = document.getElementById("userType").value;
             if (userType === "student") {
-                window.location.href = "studentinfo.html"; // Redirect immediately for students
+                document.getElementById("studentLogin").style.display = "block";
+                document.getElementById("facultyCredentials").style.display = "none";
             } else {
-                document.getElementById("facultyCredentials").style.display = "block"; // Show faculty login
+                document.getElementById("studentLogin").style.display = "none";
+                document.getElementById("facultyCredentials").style.display = "block";
             }
         }
 
-        function login() {
+        function studentLogin() {
+            window.location.href = "studentinfo.html"; // Redirect to student page
+        }
+
+        function facultyLogin() {
             const username = document.getElementById("username").value;
             const password = document.getElementById("password").value;
 
             if (username === "12345" && password === "abcd") {
-                alert("Faculty logged in successfully!");
                 window.location.href = "index.html"; // Redirect to faculty page
             } else {
                 document.getElementById("errorMessage").textContent = "Invalid username or password!";
