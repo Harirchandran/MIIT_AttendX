@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1"> <!-- Responsive meta tag -->
+  <title>Students Attendance Taker</title>
+  <!-- Include Bootstrap CSS for a responsive UI -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { margin: 20px; }
+    .student-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Makes the toggle button stick to the right */
+  gap: 10px;
+  padding: 5px;
+  border-bottom: 1px solid #ddd;
+  flex-wrap: wrap;
+}
+
+    .status-btn {
+      padding: 5px 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .status-btn.present { background-color: #90EE90; }
+    .status-btn.absent { background-color: #FFB6C1; }
+    /* Attendance Report styles */
+    .status-box {
+      display: inline-block;
+      width: 140px;
+      padding: 10px;
+      margin: 5px;
+      text-align: center;
+      border-radius: 5px;
+      color: white;
+      font-weight: bold;
+      font-size: 0.9em;
+    }
+    .status-green { background-color: #28a745; }
+    .status-red { background-color: #dc3545; }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <h1 class="mb-4 text-center">Students Attendance Taker</h1>
+    
+    <!-- Attendance Session Details -->
+    <div class="card mb-4">
+      <div class="card-header">Attendance Session Details</div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-md-3 col-12 mb-2">
+            <label for="course" class="form-label">Course</label>
+            <select id="course" class="form-select">
+              <option value="MCA">MCA</option>
+              <option value="MBA">MBA</option>
+            </select>
+          </div>
+          <div class="col-md-3 col-12 mb-2">
+            <label for="semester" class="form-label">Semester</label>
+            <select id="semester" class="form-select">
+              <option value="1">Sem 1</option>
+              <option value="2">Sem 2</option>
+              <option value="3">Sem 3</option>
+              <option value="4">Sem 4</option>
+            </select>
+          </div>
+          <div class="col-md-3 col-12 mb-2">
+            <label for="date" class="form-label">Date</label>
+            <input type="date" id="date" class="form-control">
+          </div>
+          <div class="col-md-3 col-12 mb-2">
+            <label for="hour" class="form-label">Hour</label>
+            <select id="hour" class="form-select">
+              <option value="9:30-10:30">Morning 1 (9:30-10:30)</option>
+              <option value="10:30-11:30">Morning 2 (10:30-11:30)</option>
+              <option value="11:30-12:30">Morning 3 (11:30-12:30)</option>
+              <option value="1:30-2:30">Afternoon 1 (1:30-2:30)</option>
+              <option value="2:30-3:30">Afternoon 2 (2:30-3:30)</option>
+            </select>
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-md-6 col-12 mb-2">
+            <label for="startRoll" class="form-label">Start Roll (6 digits)</label>
+            <input type="text" id="startRoll" class="form-control" placeholder="Not available" readonly>
+               </div>
+          <div class="col-md-6 col-12 mb-2">
+            <label for="endRoll" class="form-label">End Roll (6 digits)</label>
+            <input type="text" id="endRoll" class="form-control" placeholder="Not available" readonly>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label for="facultyDropdown" class="form-label">Attendance Taken By</label>
+          <select id="facultyDropdown" class="form-select">
+            <option value="Class Incharge">Class Incharge</option>
+         
+          </select>
+        </div>
+        <button id="generateListBtn" class="btn btn-primary">Get Student List</button>
+      </div>
+    </div>
+    
+    <!-- Student Attendance List -->
+    <div class="card mb-4">
+      <div class="card-header">Attendance List</div>
+      <div class="card-body">
+        <div id="studentList" class="list-group">
+          <!-- Dynamically generated student list -->
+        </div>
+        <button id="submitAttendanceBtn" class="btn btn-success mt-3">Submit Attendance</button>
+      </div>
+    </div>
+    
+    <!-- Attendance Report -->
+    <div class="card mb-4">
+      <div class="card-header">Attendance Report</div>
+      <div class="card-body">
+        <div id="reportContainer" class="border p-3">
+          <!-- Report will be loaded here -->
+        </div>
+        <button id="refreshReportBtn" class="btn btn-secondary mt-3">Refresh Report</button>
+      </div>
+    </div>
+    
+    <!-- Fetch Individual Attendance Details Section -->
+    <div class="card mb-4">
+      <div class="card-header">Fetch Individual Attendance Details</div>
+      <div class="card-body">
+        <button id="fetchDetailsBtn" class="btn btn-info mb-3">Fetch individual attendance details</button>
+        <div id="detailsForm" style="display:none;">
+          <div class="mb-3">
+            <label for="detailCourse" class="form-label">Course</label>
+            <select id="detailCourse" class="form-select">
+              <option value="MCA">MCA</option>
+              <option value="MBA">MBA</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="detailSemester" class="form-label">Semester</label>
+            <select id="detailSemester" class="form-select">
+              <option value="1">Sem 1</option>
+              <option value="2">Sem 2</option>
+              <option value="3">Sem 3</option>
+              <option value="4">Sem 4</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="detailDuration" class="form-label">Duration</label>
+            <select id="detailDuration" class="form-select">
+              <option value="single">Single Day</option>
+              <option value="multiple">Multiple Days</option>
+            </select>
+          </div>
+          <div id="singleDateDiv" class="mb-3">
+            <label for="singleDate" class="form-label">Select Date</label>
+            <input type="date" id="singleDate" class="form-control">
+          </div>
+          <div id="multipleDateDiv" class="mb-3" style="display:none;">
+            <label class="form-label">Select Date Range</label>
+            <div class="row">
+              <div class="col">
+                <input type="date" id="fromDate" class="form-control" placeholder="From Date">
+              </div>
+              <div class="col">
+                <input type="date" id="toDate" class="form-control" placeholder="To Date">
+              </div>
+            </div>
+          </div>
+          <button id="fetchAttendanceDetailsBtn" class="btn btn-primary">Submit</button>
+        </div>
+        
+        <!-- Table to display individual attendance details -->
+        <div id="attendanceDetailsTableContainer" class="mt-4" style="display:none;">
+          <h5>Individual Attendance Details</h5>
+          <div class="table-responsive">
+            <table id="attendanceDetailsTable" class="table table-bordered">
+              <!-- Header and body will be populated dynamically -->
+            </table>
+          </div>
+          <button id="exportDetailsToExcelBtn" class="btn btn-secondary mt-3">Export to Excel</button>
+        </div>
+        
+      </div>
+    </div>
+    
+  </div>
+
+  <!-- Include Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <!-- Include SheetJS for Excel export functionality -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <script>
+    /*************** Initialize Supabase Client ******************/
+    const supabaseUrl = 'https://elxyhkfuuugjskallwsp.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVseHloa2Z1dXVnanNrYWxsd3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg4MjA5ODksImV4cCI6MjA1NDM5Njk4OX0.BAEvcCVIQiVdsg0m3xX72Xi0p-vnJ4WqfZU0mE_Tuk0';
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+    
+    /**********************supabase database *****************************/
+    /*CREATE TABLE attendance (
+  course TEXT NOT NULL CHECK (course IN ('MCA', 'MBA')),
+  semester INTEGER NOT NULL CHECK (semester BETWEEN 1 AND 4),
+  date DATE NOT NULL,
+  hour TEXT NOT NULL,
+  data JSONB NOT NULL,
+  PRIMARY KEY (course, semester, date, hour)
+);
+*/
+    /*************** Global Variables ******************/
+    let attendanceData = {};
+    let studentListData = []; // Will hold student objects { roll_number, student_name }
+
+    // Set default date to today for session attendance
+    document.getElementById('date').value = new Date().toISOString().split('T')[0];
+
+    /*************** Spinner Helper Functions ******************/
+    function showSpinnerOnButton(button) {
+      button.disabled = true;
+      const spinner = document.createElement('span');
+      spinner.className = "spinner-border spinner-border-sm ms-2";
+      spinner.role = "status";
+      spinner.ariaHidden = "true";
+      button.appendChild(spinner);
+    }
+    
+    function hideSpinnerOnButton(button) {
+      button.disabled = false;
+      const spinner = button.querySelector('.spinner-border');
+      if (spinner) {
+        spinner.remove();
+      }
+    }
+    
+    function showSpinnerInContainer(container) {
+      container.innerHTML = `<div class="d-flex justify-content-center my-3">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>`;
+    }
+    
+    /*************** Event Listeners ******************/
+  /*************** Event Listeners ******************/
+document.getElementById('generateListBtn').addEventListener('click', generateStudentList);
+document.getElementById('submitAttendanceBtn').addEventListener('click', submitAttendance);
+document.getElementById('fetchDetailsBtn').addEventListener('click', () => {
+  const formDiv = document.getElementById('detailsForm');
+  formDiv.style.display = formDiv.style.display === 'none' ? 'block' : 'none';
+});
+document.getElementById('detailDuration').addEventListener('change', toggleDateInputs);
+document.getElementById('fetchAttendanceDetailsBtn').addEventListener('click', fetchAttendanceDetails);
+document.getElementById('exportDetailsToExcelBtn').addEventListener('click', exportDetailsToExcel);
+document.getElementById('refreshReportBtn').addEventListener('click', loadAttendanceReport);
+
+/* Event Listeners for Course, Semester, Date, and Hour Changes */
+document.getElementById('course').addEventListener('change', () => {
+  updateFacultyDropdown();
+  updateRollNumberBoxes();
+  loadAttendanceReport();
+});
+document.getElementById('semester').addEventListener('change', () => {
+  updateRollNumberBoxes();
+  loadAttendanceReport();
+});
+document.getElementById('date').addEventListener('change', () => {
+  resetStudentList();
+  loadAttendanceReport();
+});
+document.getElementById('hour').addEventListener('change', () => {
+  resetStudentList();
+  loadAttendanceReport();
+});
+
+
+    /*************** Functions for Session Attendance ******************/
+    async function generateStudentList() {
+  // Get current session details
+  const course = document.getElementById('course').value;
+  const semester = parseInt(document.getElementById('semester').value, 10);
+  const date = document.getElementById('date').value;
+  const hour = document.getElementById('hour').value;
+
+  // Query the attendance table for a previous record matching these details.
+  let previousAttendance = {};
+  const { data: existingRecord, error } = await supabaseClient
+    .from('attendance')
+    .select('data')
+    .eq('course', course)
+    .eq('semester', semester)
+    .eq('date', date)
+    .eq('hour', hour)
+    .maybeSingle();
+
+  // IMPORTANT: our record structure is now { attendance: {...}, faculty: "..." }
+  if (!error && existingRecord && existingRecord.data) {
+    previousAttendance = existingRecord.data.attendance || {};
+  }
+
+  // Clear any previous student list and reset attendance data.
+  const listContainer = document.getElementById('studentList');
+  listContainer.innerHTML = '';
+  attendanceData = {};
+
+  // Check if studentListData is available (populated by your updateRollNumberBoxes function).
+  if (!studentListData || studentListData.length === 0) {
+    alert("No student records available for the selected course and semester.");
+    return;
+  }
+
+  // For each student record, set the status based on previous attendance (default is present: true)
+  studentListData.forEach(student => {
+    // Default status: present (true)
+    let status = true;
+    // If the previous attendance record contains an entry for this student, use it.
+    if (previousAttendance.hasOwnProperty(student.roll_number)) {
+      status = previousAttendance[student.roll_number];
+    }
+    // Save the status into the global attendanceData
+    attendanceData[student.roll_number] = status;
+    
+    // Determine button class and text based on status.
+    const btnClass = status ? "present" : "absent";
+    const btnText = status ? "Present" : "Absent";
+    
+    // Create a new student item element.
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'list-group-item student-item';
+    
+    // For alignment, group student info on the left and the toggle button on the right.
+    itemDiv.innerHTML = `
+      <div>
+        <span>${student.roll_number}</span> - <span>${student.student_name}</span>
+      </div>
+      <div>
+        <button class="status-btn ${btnClass}" data-roll="${student.roll_number}">${btnText}</button>
+      </div>
+    `;
+    
+    listContainer.appendChild(itemDiv);
+  });
+
+  // Attach toggle listeners to each button
+  document.querySelectorAll('.status-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      toggleStatus(button, button.getAttribute('data-roll'));
+    });
+  });
+
+  // Enable the Submit Attendance button now that the list is available.
+  document.getElementById('submitAttendanceBtn').disabled = false;
+}
+
+
+
+    function toggleStatus(button, rollNo) {
+      const isPresent = attendanceData[rollNo];
+      attendanceData[rollNo] = !isPresent;
+      if (isPresent) {
+        button.classList.remove('present');
+        button.classList.add('absent');
+        button.textContent = 'Absent';
+      } else {
+        button.classList.remove('absent');
+        button.classList.add('present');
+        button.textContent = 'Present';
+      }
+    }
+
+    async function submitAttendance() {
+  const submitBtn = document.getElementById('submitAttendanceBtn');
+  showSpinnerOnButton(submitBtn);
+
+  const course = document.getElementById('course').value;
+  const semester = parseInt(document.getElementById('semester').value, 10);
+  const date = document.getElementById('date').value;
+  const hour = document.getElementById('hour').value;
+  const faculty = document.getElementById('facultyDropdown').value; // Get faculty name
+
+  if (!date || !hour) {
+    alert("Please fill in all required fields.");
+    hideSpinnerOnButton(submitBtn);
+    return;
+  }
+
+  // Backup local attendance data
+  const backupKey = `${course}_${semester}_${date}_${hour}`;
+  localStorage.setItem(backupKey, JSON.stringify(attendanceData));
+
+  // Prepare record with faculty name inside the data JSON
+  const record = { 
+    course, 
+    semester, 
+    date, 
+    hour, 
+    data: { 
+      attendance: attendanceData,  // Store attendance details
+      faculty: faculty             // Include faculty name inside the JSON
+    }
+  };
+
+  // Check for existing attendance records for the same session
+  const { data: existingRecords, error: fetchError } = await supabaseClient
+    .from('attendance')
+    .select('*')
+    .eq('course', course)
+    .eq('semester', semester)
+    .eq('date', date)
+    .eq('hour', hour);
+
+  if (fetchError) {
+    console.error("Error checking existing records:", fetchError);
+    alert("Error checking existing data.");
+    hideSpinnerOnButton(submitBtn);
+    return;
+  }
+
+  if (existingRecords && existingRecords.length > 0) {
+    // Attendance already exists, ask for overwrite confirmation
+    if (!confirm("Attendance record for this session already exists. Do you want to delete it and overwrite it?")) {
+      hideSpinnerOnButton(submitBtn);
+      return;
+    }
+    
+    // Delete existing record
+    const { error: deleteError } = await supabaseClient
+      .from('attendance')
+      .delete()
+      .eq('course', course)
+      .eq('semester', semester)
+      .eq('date', date)
+      .eq('hour', hour);
+    
+    if (deleteError) {
+      console.error("Error deleting existing record:", deleteError);
+      alert("Error deleting existing record.");
+      hideSpinnerOnButton(submitBtn);
+      return;
+    }
+  } else {
+    // Ask confirmation before inserting a new record
+    if (!confirm("Do you want to submit new attendance?")) {
+      hideSpinnerOnButton(submitBtn);
+      return;
+    }
+  }
+
+  try {
+    // Insert the new attendance record into the Supabase database
+    const { error } = await supabaseClient
+      .from('attendance')
+      .insert(record, { returning: 'minimal' });
+
+    if (error) {
+      console.error("Error saving attendance:", error);
+      alert("Error saving attendance data.");
+    } else {
+      const absentCount = Object.values(attendanceData).filter(status => !status).length;
+      alert(`Attendance submitted successfully! Absent students: ${absentCount}`);
+      loadAttendanceReport();
+    }
+  } catch (err) {
+    console.error("Unexpected error:", err);
+    alert("Unexpected error occurred during submission.");
+  } finally {
+    hideSpinnerOnButton(submitBtn);
+  }
+}
+
+
+
+/*Create a Function to Update the Roll Number Boxes*/
+async function updateRollNumberBoxes() {
+  // Clear any previously generated student list
+  resetStudentList();
+
+  const course = document.getElementById('course').value;       // e.g., "MCA" or "MBA"
+  const semester = document.getElementById('semester').value;     // e.g., "1", "2", etc.
+  // Construct table name: for example, "mca_sem1"
+  const tableName = course.toLowerCase() + "_sem" + semester;
+
+  // Query the corresponding student table
+  const { data, error } = await supabaseClient
+    .from(tableName)
+    .select('*')
+    .order('roll_number', { ascending: true });
+  
+  const startRollField = document.getElementById('startRoll');
+  const endRollField = document.getElementById('endRoll');
+  const generateBtn = document.getElementById('generateListBtn');
+
+  if (error || !data || data.length === 0) {
+    // No student records found: show "Not available" and disable generate button
+    startRollField.value = "Not available";
+    endRollField.value = "Not available";
+    generateBtn.disabled = true;
+    studentListData = [];
+  } else {
+    // Set the first record’s roll number as start and the last record’s roll number as end.
+    startRollField.value = data[0].roll_number;
+    endRollField.value = data[data.length - 1].roll_number;
+    generateBtn.disabled = false;
+    studentListData = data; // Save the full student records array for later use
+  }
+}
+/*helper function that clears the generated list and resets the attendance data:*/
+function resetStudentList() {
+  document.getElementById('studentList').innerHTML = '';
+  attendanceData = {};
+  // Disable the Submit Attendance button when list is empty
+  document.getElementById('submitAttendanceBtn').disabled = true;
+}
+
+
+
+    /*************** Functions for Individual Attendance Details ******************/
+    function toggleDateInputs() {
+      const duration = document.getElementById('detailDuration').value;
+      if (duration === 'single') {
+        document.getElementById('singleDateDiv').style.display = 'block';
+        document.getElementById('multipleDateDiv').style.display = 'none';
+      } else {
+        document.getElementById('singleDateDiv').style.display = 'none';
+        document.getElementById('multipleDateDiv').style.display = 'block';
+      }
+    }
+/*JavaScript to Dynamically Update the Dropdown*/
+    async function updateFacultyDropdown() {
+  const course = document.getElementById('course').value; // e.g., "MCA" or "MBA"
+  const dropdown = document.getElementById('facultyDropdown');
+  
+  // Start with default options.
+  let optionsHTML = `
+    <option value="Class Incharge">Class Incharge</option>
+    
+  `;
+  
+  // Query the faculties table for records matching the selected course.
+  const { data, error } = await supabaseClient
+    .from('faculties')
+    .select('name')
+    .eq('course', course)
+    .order('name', { ascending: true });
+  
+  if (!error && data && data.length > 0) {
+    // Append additional faculty names (avoid duplicate names if they match defaults).
+    data.forEach(row => {
+      if (row.name !== "Class Incharge" && row.name !== "Class Teacher") {
+        optionsHTML += `<option value="${row.name}">${row.name}</option>`;
+      }
+    });
+  }
+  dropdown.innerHTML = optionsHTML;
+}
+
+async function fetchAttendanceDetails() {
+  const fetchBtn = document.getElementById('fetchAttendanceDetailsBtn');
+  showSpinnerOnButton(fetchBtn);
+  const course = document.getElementById('detailCourse').value;
+  const semester = parseInt(document.getElementById('detailSemester').value, 10);
+  const duration = document.getElementById('detailDuration').value;
+  let fromDate, toDate;
+
+  if (duration === 'single') {
+    fromDate = toDate = document.getElementById('singleDate').value;
+    if (!fromDate) {
+      alert("Please select a date.");
+      hideSpinnerOnButton(fetchBtn);
+      return;
+    }
+  } else {
+    fromDate = document.getElementById('fromDate').value;
+    toDate = document.getElementById('toDate').value;
+    if (!fromDate || !toDate) {
+      alert("Please select both from and to dates.");
+      hideSpinnerOnButton(fetchBtn);
+      return;
+    }
+  }
+
+  try {
+    // First, fetch the student list for this course and semester.
+    // Assumes your student tables are named like "mca_sem1", "mba_sem2", etc.
+    const tableName = course.toLowerCase() + "_sem" + semester;
+    let studentNameMapping = {};
+    const { data: studentData, error: studentDataError } = await supabaseClient
+      .from(tableName)
+      .select('*')
+      .order('roll_number', { ascending: true });
+    if (studentDataError) {
+      console.error("Error fetching student list for details:", studentDataError);
+      // Optionally alert or continue without names.
+    } else if (studentData && studentData.length > 0) {
+      studentData.forEach(student => {
+        studentNameMapping[student.roll_number] = student.student_name;
+      });
+    }
+
+    // Fetch attendance records based on the criteria
+    const { data, error } = await supabaseClient
+      .from('attendance')
+      .select('*')
+      .eq('course', course)
+      .eq('semester', semester)
+      .gte('date', fromDate)
+      .lte('date', toDate);
+
+    if (error) {
+      console.error("Error fetching attendance details:", error);
+      alert("Error fetching data.");
+      hideSpinnerOnButton(fetchBtn);
+      return;
+    }
+    if (!data || data.length === 0) {
+      alert("No attendance records found for the selected criteria.");
+      hideSpinnerOnButton(fetchBtn);
+      return;
+    }
+
+    // Define hour blocks for morning and afternoon sessions.
+    const morningHours = ["9:30-10:30", "10:30-11:30", "11:30-12:30"];
+    const afternoonHours = ["1:30-2:30", "2:30-3:30"];
+
+    // Aggregate attendance data by date and roll number.
+    const dailyAttendance = {};
+    const allRollNumbers = new Set();
+
+    data.forEach(session => {
+      const sessionDate = session.date;
+      if (!dailyAttendance[sessionDate]) dailyAttendance[sessionDate] = {};
+      
+      // Extract attendance data from the nested JSON (ignoring the faculty property).
+      const sessionAttendance = session.data && session.data.attendance ? session.data.attendance : {};
+      
+      for (const roll in sessionAttendance) {
+        allRollNumbers.add(roll);
+        if (!dailyAttendance[sessionDate][roll]) {
+          dailyAttendance[sessionDate][roll] = { morning: {}, afternoon: {} };
+        }
+        if (morningHours.includes(session.hour)) {
+          dailyAttendance[sessionDate][roll].morning[session.hour] = sessionAttendance[roll];
+        } else if (afternoonHours.includes(session.hour)) {
+          dailyAttendance[sessionDate][roll].afternoon[session.hour] = sessionAttendance[roll];
+        }
+      }
+    });
+
+    const dateColumns = Object.keys(dailyAttendance).sort();
+
+    // Create a caption for the table.
+    let captionText = "";
+    if (duration === "single") {
+      captionText = `${course} - Semester ${semester} on ${fromDate}`;
+    } else {
+      captionText = `${course} - Semester ${semester} from ${fromDate} to ${toDate}`;
+    }
+
+    // Build table HTML.
+    // Added an extra header column for "Name" after "Roll Number".
+    let tableHTML = `<caption class="text-center fw-bold fs-5 mb-3">${captionText}</caption>`;
+    tableHTML += '<thead class="table-light"><tr>';
+    tableHTML += '<th>Roll Number</th><th>Name</th>';
+    dateColumns.forEach(date => { 
+      tableHTML += `<th>${date}</th>`; 
+    });
+    tableHTML += '<th>Total Attendance</th><th>Percentage</th>';
+    tableHTML += '</tr></thead><tbody>';
+
+    // For each roll number, add a row with roll number, name, and attendance details.
+    allRollNumbers.forEach(roll => {
+      let studentTotal = 0;
+      tableHTML += `<tr><td>${roll}</td><td>${studentNameMapping[roll] || ""}</td>`;
+      dateColumns.forEach(date => {
+        let dayScore = 0;
+        const studentDay = dailyAttendance[date][roll];
+        let statusArr = [];
+
+        // Process morning hours.
+        morningHours.forEach(hour => {
+          let status = "a";
+          if (studentDay && (hour in studentDay.morning)) {
+            status = studentDay.morning[hour] === true ? "p" : "a";
+          }
+          statusArr.push(status);
+        });
+        // Process afternoon hours.
+        afternoonHours.forEach(hour => {
+          let status = "a";
+          if (studentDay && (hour in studentDay.afternoon)) {
+            status = studentDay.afternoon[hour] === true ? "p" : "a";
+          }
+          statusArr.push(status);
+        });
+
+        // Calculate day score: if all morning hours are present, add 0.5; similarly for afternoon.
+        if (studentDay) {
+          if (Object.keys(studentDay.morning).length === morningHours.length) {
+            const fullMorning = morningHours.every(hour => studentDay.morning[hour] === true);
+            dayScore += fullMorning ? 0.5 : 0;
+          }
+          if (Object.keys(studentDay.afternoon).length === afternoonHours.length) {
+            const fullAfternoon = afternoonHours.every(hour => studentDay.afternoon[hour] === true);
+            dayScore += fullAfternoon ? 0.5 : 0;
+          }
+        }
+        studentTotal += dayScore;
+        tableHTML += `<td>${dayScore} (${statusArr.join(", ")})</td>`;
+      });
+      const totalDays = dateColumns.length;
+      const percentage = totalDays > 0 ? ((studentTotal / totalDays) * 100).toFixed(2) : '0';
+
+      // Set percentage text color based on its value:
+      // less than 75% -> red, between 75 and 80 -> yellow, more than 80 -> green.
+      let percentageClass = "";
+      const percValue = parseFloat(percentage);
+      if (percValue < 75) {
+        percentageClass = "text-danger"; // red
+      } else if (percValue >= 75 && percValue < 80) {
+        percentageClass = "text-warning"; // yellow
+      } else {
+        percentageClass = "text-success"; // green
+      }
+      
+      tableHTML += `<td>${studentTotal}</td><td class="${percentageClass}">${percentage}%</td></tr>`;
+    });
+    tableHTML += '</tbody>';
+
+    document.getElementById('attendanceDetailsTable').innerHTML = tableHTML;
+    document.getElementById('attendanceDetailsTableContainer').style.display = 'block';
+  } catch (err) {
+    console.error("Error processing attendance details:", err);
+    alert("Error processing data.");
+  } finally {
+    hideSpinnerOnButton(fetchBtn);
+  }
+}
+
+
+
+function exportDetailsToExcel() {
+  const table = document.getElementById('attendanceDetailsTable');
+  const worksheet = XLSX.utils.table_to_sheet(table);
+  const workbook = XLSX.utils.book_new();
+
+  // Convert relevant columns (Total Attendance, Percentage) to proper numeric formats.
+  for (let cell in worksheet) {
+    // Skip metadata keys (e.g., "!ref", "!cols")
+    if (cell[0] === '!') continue;
+
+    const cellObj = worksheet[cell];
+
+    // Convert percentage values correctly
+    if (cellObj.v && typeof cellObj.v === 'string' && cellObj.v.trim().endsWith('%')) {
+      let num = parseFloat(cellObj.v.replace('%', '')); // Remove "%" and parse as float
+      cellObj.v = num / 100; // Convert to decimal (Excel expects 85% as 0.85)
+      cellObj.t = 'n';       // Mark cell as a number
+      cellObj.z = '0.00%';   // Apply percentage format
+
+      // Apply conditional formatting based on percentage
+      if (num < 75) {
+        worksheet[cell].s = { fill: { fgColor: { rgb: "FF0000" } } }; // Red background
+      } else if (num >= 75 && num < 80) {
+        worksheet[cell].s = { fill: { fgColor: { rgb: "FFFF00" } } }; // Yellow background
+      } else {
+        worksheet[cell].s = { fill: { fgColor: { rgb: "00FF00" } } }; // Green background
+      }
+    }
+
+    // Ensure Total Attendance column is treated as a number
+    if (cellObj.v && !isNaN(cellObj.v)) {
+      cellObj.v = parseFloat(cellObj.v); // Convert to number
+      cellObj.t = 'n'; // Mark as a number type
+    }
+
+    // Keep the (p, p, p, p, p) attendance column as text
+    if (typeof cellObj.v === 'string' && cellObj.v.includes('(')) {
+      cellObj.t = 's'; // Force as string
+    }
+  }
+
+  const course = document.getElementById('detailCourse').value;
+  const sem = document.getElementById('detailSemester').value;
+
+  let fileName = `Individual_Attendance_${course}_Sem${sem}`;
+  const duration = document.getElementById('detailDuration').value;
+
+  if (duration === 'single') {
+    const singleDate = document.getElementById('singleDate').value;
+    fileName += `_${singleDate}`;
+  } else {
+    const fromDate = document.getElementById('fromDate').value;
+    const toDate = document.getElementById('toDate').value;
+    fileName += `_${fromDate}_to_${toDate}`;
+  }
+
+  fileName += ".xlsx";
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, "IndividualAttendance");
+  XLSX.writeFile(workbook, fileName);
+}
+
+
+
+    /*************** Attendance Report Functions ******************/
+    const hours = [
+      "9:30-10:30",
+      "10:30-11:30",
+      "11:30-12:30",
+      "1:30-2:30",
+      "2:30-3:30"
+    ];
+
+    async function loadAttendanceReport() {
+  const course = document.getElementById('course').value;
+  const semester = parseInt(document.getElementById('semester').value, 10);
+  const dateInput = document.getElementById('date').value;
+  const today = dateInput ? dateInput : new Date().toISOString().split('T')[0];
+  const reportContainer = document.getElementById('reportContainer');
+  
+  // Show spinner in the report container
+  showSpinnerInContainer(reportContainer);
+
+  let reportHTML = `<h3>${course} - Semester ${semester} (Date: ${today})</h3>`;
+  reportHTML += `<div class="d-flex flex-wrap">`;
+
+  for (const hour of hours) {
+    const { data } = await supabaseClient
+      .from('attendance')
+      .select('*')
+      .eq('course', course)
+      .eq('semester', semester)
+      .eq('date', today)
+      .eq('hour', hour)
+      .maybeSingle();
+
+    if (data) {
+      // Check for the faculty name stored in the JSON data.
+      let facultyLabel = "";
+      if (data.data && data.data.faculty) {
+        facultyLabel = " by <br> " + data.data.faculty;
+      }
+      const status = "Recorded" + facultyLabel;
+      reportHTML += `<div class="status-box status-green">${hour}<br>${status}</div>`;
+    } else {
+      reportHTML += `<div class="status-box status-red">${hour}<br>Missing</div>`;
+    }
+  }
+  reportHTML += `</div>`;
+  reportContainer.innerHTML = reportHTML;
+}
+
+
+    // Load the report when the page loads
+    loadAttendanceReport();
+    // Call on page load
+updateRollNumberBoxes();
+updateFacultyDropdown();
+
+
+  </script>
+</body>
+</html>
