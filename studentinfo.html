@@ -57,8 +57,9 @@
           </div>
           <div class="col-md-4 mb-2">
             <label for="studentRoll" class="form-label">Roll Number</label>
-            <input type="text" id="studentRoll" class="form-control" placeholder="Enter Roll Number">
-          </div>
+            <input type="text" id="studentRoll" class="form-control" placeholder="Enter Roll Number" 
+            pattern="\d{6,}" title="Roll number must be at least 6 digits" min="100000" max="999999" step="1" oninput="if(this.value.length > 6) this.value = this.value.slice(0,6)"/>
+     </div>
         </div>
         <button id="loadDashboardBtn" class="btn btn-primary mt-3">View Dashboard</button>
       </div>
@@ -83,7 +84,7 @@
         <div class="card-body">
           <button id="toggleDetailsFormBtn" class="btn btn-info mb-3">Show/Hide Attendance Details Form</button>
           <div id="detailsForm" class="mb-3" style="display:none;">
-            <!-- Here we use the student's own course/semester so we omit separate inputs -->
+            <!-- We use the student's own course/semester, so no separate inputs -->
             <div class="mb-3">
               <label for="detailDuration" class="form-label">Duration</label>
               <select id="detailDuration" class="form-select">
@@ -122,16 +123,34 @@
         </div>
       </div>
     </div>
-
-  </div> <!-- End Container -->
+  </div>
+  <!-- End Container -->
 
   <script>
     // Initialize Supabase client (replace with your actual key)
     const supabaseUrl = 'https://elxyhkfuuugjskallwsp.supabase.co';
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVseHloa2Z1dXVnanNrYWxsd3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg4MjA5ODksImV4cCI6MjA1NDM5Njk4OX0.BAEvcCVIQiVdsg0m3xX72Xi0p-vnJ4WqfZU0mE_Tuk0';
-    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+   const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-    // Spinner helper functions
+   // Get the input element and the submit button
+const rollInput = document.getElementById("studentRoll");
+const loadDashboardBtn = document.getElementById("loadDashboardBtn");
+
+// Initially disable the button
+loadDashboardBtn.disabled = true;
+
+// Add an event listener to validate input as the user types
+rollInput.addEventListener("input", () => {
+  const value = rollInput.value;
+  // Check if the input consists of at least 6 digits
+  if (/^\d{6,}$/.test(value)) {
+    loadDashboardBtn.disabled = false;
+  } else {
+    loadDashboardBtn.disabled = true;
+  }
+});
+
+    // Spinner helper functions for buttons
     function showSpinnerOnButton(button) {
       button.disabled = true;
       const spinner = document.createElement('span');
@@ -145,6 +164,21 @@
       const spinner = button.querySelector('.spinner-border');
       if (spinner) spinner.remove();
     }
+
+    // Reset the dashboard when initial form values change
+    function resetDashboard() {
+      document.getElementById('studentDashboard').classList.add('hidden');
+      document.getElementById('studentName').textContent = '';
+      document.getElementById('studentRollDisplay').textContent = '';
+      document.getElementById('studentCourseDisplay').textContent = '';
+      document.getElementById('studentSemesterDisplay').textContent = '';
+      document.getElementById('studentAttendance').textContent = '';
+      document.getElementById('attendanceDetailsTableContainer').style.display = 'none';
+      document.getElementById('detailsForm').style.display = 'none';
+    }
+    document.getElementById('studentCourse').addEventListener('change', resetDashboard);
+    document.getElementById('studentSemester').addEventListener('change', resetDashboard);
+    document.getElementById('studentRoll').addEventListener('input', resetDashboard);
 
     // Toggle details form visibility
     document.getElementById('toggleDetailsFormBtn').addEventListener('click', () => {
@@ -167,45 +201,39 @@
 
     // Load Dashboard on "View Dashboard" button click
     document.getElementById('loadDashboardBtn').addEventListener('click', async function() {
+      const btn = this;
+      showSpinnerOnButton(btn);
       const course = document.getElementById('studentCourse').value;
       const semester = document.getElementById('studentSemester').value;
       const rollNumber = document.getElementById('studentRoll').value.trim();
-
       if (!course || !semester || !rollNumber) {
         alert("Please fill in all details.");
+        hideSpinnerOnButton(btn);
         return;
       }
-
-      // Fetch student details from the appropriate table (e.g., mca_sem1)
       const tableName = `${course.toLowerCase()}_sem${semester}`;
       const { data: studentData, error: studentError } = await supabaseClient
         .from(tableName)
         .select('*')
         .eq('roll_number', rollNumber)
         .maybeSingle();
-
       if (studentError || !studentData) {
         alert("Student not found. Please check details.");
+        hideSpinnerOnButton(btn);
         return;
       }
-
-      // Populate the dashboard with student info
       document.getElementById('studentName').textContent = studentData.student_name;
       document.getElementById('studentRollDisplay').textContent = rollNumber;
       document.getElementById('studentCourseDisplay').textContent = course;
       document.getElementById('studentSemesterDisplay').textContent = semester;
-
-      // Fetch attendance records from the 'attendance' table
       const { data: attendanceData, error: attendanceError } = await supabaseClient
         .from('attendance')
         .select('*')
         .eq('course', course)
         .eq('semester', semester);
-
       if (attendanceError || !attendanceData.length) {
         document.getElementById('studentAttendance').textContent = "No attendance records found.";
       } else {
-        // Calculate overall attendance percentage for this student
         let totalClasses = 0, attendedClasses = 0;
         attendanceData.forEach(session => {
           if (session.data && session.data.attendance && session.data.attendance[rollNumber] !== undefined) {
@@ -217,16 +245,14 @@
         let percentageColor = percentage < 75 ? 'text-danger' : (percentage < 80 ? 'text-warning' : 'text-success');
         document.getElementById('studentAttendance').innerHTML = `<span class="${percentageColor}">${percentage}%</span>`;
       }
-
-      // Show the dashboard section
       document.getElementById('studentDashboard').classList.remove('hidden');
+      hideSpinnerOnButton(btn);
     });
 
     // Fetch Detailed Attendance for the logged-in student
     async function fetchAttendanceDetails() {
       const fetchBtn = document.getElementById('fetchAttendanceDetailsBtn');
       showSpinnerOnButton(fetchBtn);
-      // Use the student's own course, semester, and roll from the dashboard
       const course = document.getElementById('studentCourseDisplay').textContent;
       const semester = parseInt(document.getElementById('studentSemesterDisplay').textContent, 10);
       const rollNumber = document.getElementById('studentRollDisplay').textContent.trim();
@@ -249,7 +275,6 @@
         }
       }
       try {
-        // Fetch attendance records for the selected date range
         const { data, error } = await supabaseClient
           .from('attendance')
           .select('*')
@@ -268,10 +293,8 @@
           hideSpinnerOnButton(fetchBtn);
           return;
         }
-        // Define hour blocks for morning and afternoon sessions.
         const morningHours = ["9:30-10:30", "10:30-11:30", "11:30-12:30"];
         const afternoonHours = ["1:30-2:30", "2:30-3:30"];
-        // Aggregate attendance data by date for the logged-in student.
         const dailyAttendance = {};
         data.forEach(session => {
           const sessionDate = session.date;
@@ -344,7 +367,6 @@
         hideSpinnerOnButton(fetchBtn);
       }
     }
-    // Attach event listener for the "Submit" button in the details form.
     document.getElementById('fetchAttendanceDetailsBtn').addEventListener('click', fetchAttendanceDetails);
 
     // Export Detailed Attendance to Excel
@@ -352,7 +374,6 @@
       const table = document.getElementById('attendanceDetailsTable');
       const worksheet = XLSX.utils.table_to_sheet(table);
       const workbook = XLSX.utils.book_new();
-      // Convert percentage cells to proper numbers with formatting.
       for (let cell in worksheet) {
         if (cell[0] === '!') continue;
         const cellObj = worksheet[cell];
@@ -380,30 +401,6 @@
       XLSX.writeFile(workbook, fileName);
     }
     document.getElementById('exportDetailsToExcelBtn').addEventListener('click', exportDetailsToExcel);
-
-    function resetDashboard() {
-  // Hide the entire dashboard
-  document.getElementById('studentDashboard').classList.add('hidden');
-  
-  // Clear student details
-  document.getElementById('studentName').textContent = '';
-  document.getElementById('studentRollDisplay').textContent = '';
-  document.getElementById('studentCourseDisplay').textContent = '';
-  document.getElementById('studentSemesterDisplay').textContent = '';
-  document.getElementById('studentAttendance').textContent = '';
-
-  // Hide the attendance details table container (the fetched report)
-  document.getElementById('attendanceDetailsTableContainer').style.display = 'none';
-
-  // Hide the details form if it is open
-  document.getElementById('detailsForm').style.display = 'none';
-}
-
-document.getElementById('studentCourse').addEventListener('change', resetDashboard);
-document.getElementById('studentSemester').addEventListener('change', resetDashboard);
-document.getElementById('studentRoll').addEventListener('input', resetDashboard);
-
-
   </script>
 
 </body>
