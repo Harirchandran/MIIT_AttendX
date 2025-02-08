@@ -54,7 +54,7 @@
 <body>
 
     <div class="login-container">
-        <h2>Attendance Management System</h2>
+        <h2>MIIT AttendX</h2>
         <p>Please select your role to proceed.</p>
 
         <select id="userType" onchange="handleUserTypeChange()">
@@ -67,7 +67,7 @@
 
         <!-- Faculty Login Fields -->
         <div id="facultyCredentials">
-            <input type="text" id="username" placeholder="User ID">
+           
             <input type="password" id="password" placeholder="Password">
             <button onclick="facultyLogin()">Login as Faculty</button>
             <p id="errorMessage"></p>
@@ -91,10 +91,10 @@
         }
 
         function facultyLogin() {
-            const username = document.getElementById("username").value;
+           
             const password = document.getElementById("password").value;
 
-            if (username === "12345" && password === "abcd") {
+            if (password === "10101010") {
                 window.location.href = "main.html"; // Redirect to faculty page
             } else {
                 document.getElementById("errorMessage").textContent = "Invalid username or password!";
