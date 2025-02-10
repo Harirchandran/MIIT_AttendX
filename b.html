@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Teacher Internal Mark Entry</title>
+  <!-- Bootstrap CSS for responsive UI -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <!-- SheetJS for Excel export functionality -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body { padding: 20px; }
+    .hidden { display: none; }
+    .status-box {
+      display: inline-block;
+      width: 140px;
+      padding: 10px;
+      margin: 5px;
+      text-align: center;
+      border-radius: 5px;
+      color: white;
+      font-weight: bold;
+      font-size: 0.9em;
+    }
+    .status-green { background-color: #28a745; }
+    .status-red { background-color: #dc3545; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="mb-4 text-center">MIIT Internal Mark Entry</h1>
+    
+    <!-- Form to select course, semester and subject -->
+    <div class="card mb-4">
+      <div class="card-header">Internal Mark Entry</div>
+      <div class="card-body">
+        <div class="row">
+          <!-- Course Selection -->
+          <div class="col-md-4 mb-2">
+            <label for="internalCourse" class="form-label">Course</label>
+            <select id="internalCourse" class="form-select">
+              <option value="MCA">MCA</option>
+              <option value="MBA">MBA</option>
+            </select>
+          </div>
+          <!-- Semester Selection -->
+          <div class="col-md-4 mb-2">
+            <label for="internalSemester" class="form-label">Semester</label>
+            <select id="internalSemester" class="form-select">
+              <option value="">Select Semester</option>
+              <option value="1">Sem 1</option>
+              <option value="2">Sem 2</option>
+              <option value="3">Sem 3</option>
+              <option value="4">Sem 4</option>
+            </select>
+          </div>
+          <!-- Subject Dropdown -->
+          <div class="col-md-4 mb-2">
+            <label for="subjectDropdown" class="form-label">Subject</label>
+            <select id="subjectDropdown" class="form-select">
+              <!-- Options will be loaded dynamically -->
+            </select>
+          </div>
+        </div>
+        <button id="loadSubjectMarksBtn" class="btn btn-primary mt-3">Load Student Marks</button>
+      </div>
+    </div>
+
+    <!-- Marks Entry Table Container -->
+    <div id="marksEntryTableContainer" class="card mb-4" style="display: none;">
+      <div class="card-header" id="marksEntryHeading">Enter Internal Marks</div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table id="marksEntryTable" class="table table-bordered">
+            <!-- Table header and rows will be generated dynamically -->
+          </table>
+        </div>
+        <!-- Action Buttons -->
+        <button id="calculateTotalBtn" class="btn btn-warning mt-3" disabled>Calculate Total</button>
+        <button id="saveExportBtn" class="btn btn-success mt-3" disabled>Save and Export to Excel</button>
+      </div>
+    </div>
+
+    <!-- Alert Message Container -->
+    <div id="saveAlert" class="alert alert-info hidden"></div>
+  </div>
+  
+  <script>
+    /*************** Initialize Supabase Client ******************/
+    const supabaseUrl = 'https://elxyhkfuuugjskallwsp.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVseHloa2Z1dXVnanNrYWxsd3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg4MjA5ODksImV4cCI6MjA1NDM5Njk4OX0.BAEvcCVIQiVdsg0m3xX72Xi0p-vnJ4WqfZU0mE_Tuk0';
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+    /*************** Global Variables ******************/
+    let currentSubject = null; // Holds the selected subject (subject_id and division_type)
+
+    /*************** Spinner Helper Functions ******************/
+    function showSpinnerOnButton(button) {
+      button.disabled = true;
+      const spinner = document.createElement("span");
+      spinner.className = "spinner-border spinner-border-sm ms-2";
+      spinner.role = "status";
+      spinner.ariaHidden = "true";
+      button.appendChild(spinner);
+    }
+    function hideSpinnerOnButton(button) {
+      button.disabled = false;
+      const spinner = button.querySelector(".spinner-border");
+      if (spinner) spinner.remove();
+    }
+
+    /*************** Enable/Disable Action Buttons Based on Data Entered ******************/
+    function checkIfAnyDataEntered() {
+      const rows = document.querySelectorAll("#marksEntryTable tbody tr");
+      let anyData = false;
+      rows.forEach(row => {
+        const inputs = row.querySelectorAll(".mark-input");
+        inputs.forEach(inp => {
+          if (inp.getAttribute("data-original") && inp.getAttribute("data-original").trim() !== "") {
+            anyData = true;
+          }
+        });
+      });
+      document.getElementById("calculateTotalBtn").disabled = !anyData;
+      document.getElementById("saveExportBtn").disabled = !anyData;
+    }
+
+    /*************** Attach Input Listener to Mark Inputs ******************/
+    function attachInputListener() {
+      document.querySelectorAll(".mark-input").forEach(inp => {
+        inp.addEventListener("input", function(){
+          this.setAttribute("data-original", this.value);
+          checkIfAnyDataEntered();
+        });
+      });
+    }
+
+    /*************** Load Subjects for Selected Course & Semester ******************/
+    document.getElementById("internalCourse").addEventListener("change", loadSubjects);
+    document.getElementById("internalSemester").addEventListener("change", loadSubjects);
+    async function loadSubjects() {
+      const course = document.getElementById("internalCourse").value;
+      const semester = document.getElementById("internalSemester").value;
+      const dropdown = document.getElementById("subjectDropdown");
+      
+      // Disable dropdown and add a spinner next to it
+      dropdown.disabled = true;
+      let spinner = document.createElement("span");
+      spinner.id = "subjectSpinner";
+      spinner.className = "spinner-border spinner-border-sm ms-2";
+      spinner.role = "status";
+      spinner.ariaHidden = "true";
+      dropdown.parentNode.appendChild(spinner);
+
+      if (!semester) {
+        dropdown.innerHTML = "<option value=''>Select Semester First</option>";
+        dropdown.disabled = false;
+        if (document.getElementById("subjectSpinner")) {
+          document.getElementById("subjectSpinner").remove();
+        }
+        return;
+      }
+      
+      // Construct subject table name (e.g., mca_sem1_subjects)
+      const subjectTable = `${course.toLowerCase()}_sem${semester}_subjects`;
+      const { data, error } = await supabaseClient
+        .from(subjectTable)
+        .select("subject_id, subject_name, division_type")
+        .order("subject_name", { ascending: true });
+      
+      // Re-enable dropdown and remove spinner
+      dropdown.disabled = false;
+      if (document.getElementById("subjectSpinner")) {
+        document.getElementById("subjectSpinner").remove();
+      }
+      
+      if (error) {
+        console.error("Error loading subjects:", error);
+        return;
+      }
+      dropdown.innerHTML = "";
+      if (data.length === 0) {
+        dropdown.innerHTML = "<option value=''>No subjects available</option>";
+      } else {
+        data.forEach((subject) => {
+          let option = document.createElement("option");
+          option.value = subject.subject_id;
+          option.textContent = subject.subject_name + " (" + subject.division_type + ")";
+          option.dataset.divisionType = subject.division_type;
+          dropdown.appendChild(option);
+        });
+      }
+    }
+
+    /*************** Load Student Marks Table ******************/
+    document.getElementById("loadSubjectMarksBtn").addEventListener("click", async () => {
+      const loadBtn = document.getElementById("loadSubjectMarksBtn");
+      showSpinnerOnButton(loadBtn);
+
+      const course = document.getElementById("internalCourse").value;
+      const semester = document.getElementById("internalSemester").value;
+      const subjectId = document.getElementById("subjectDropdown").value;
+      if (!subjectId) {
+        alert("Please select a subject.");
+        hideSpinnerOnButton(loadBtn);
+        return;
+      }
+      // Get division type from selected subject
+      const subjectDropdown = document.getElementById("subjectDropdown");
+      const divisionType = subjectDropdown.options[subjectDropdown.selectedIndex].dataset.divisionType;
+      currentSubject = { subject_id: subjectId, division_type: divisionType };
+
+      // Set table heading with the selected subject name
+      const subjectName = subjectDropdown.options[subjectDropdown.selectedIndex].textContent;
+      document.getElementById("marksEntryHeading").textContent = `Internal Marks Entry for ${subjectName}`;
+
+      // Check if internal marks record already exists
+      let { data: internalData } = await supabaseClient
+        .from("internal_marks")
+        .select("*")
+        .eq("course", course)
+        .eq("semester", semester)
+        .eq("subject_id", subjectId)
+        .maybeSingle();
+      
+      // If record exists, ask teacher if they wish to load existing data
+      let loadExisting = false;
+      if (internalData) {
+        loadExisting = confirm("Internal marks for this subject already exist. Do you want to load them for editing?");
+      }
+      
+      // Load student list from the corresponding student table (e.g., mca_sem1)
+      const studentTable = `${course.toLowerCase()}_sem${semester}`;
+      const { data: students, error: studentError } = await supabaseClient
+        .from(studentTable)
+        .select("roll_number, student_name")
+        .order("roll_number", { ascending: true });
+      if (studentError) {
+        console.error("Error loading student list:", studentError);
+        hideSpinnerOnButton(loadBtn);
+        return;
+      }
+      
+      // Build marks entry table
+      const table = document.getElementById("marksEntryTable");
+      table.innerHTML = "";
+      let headerHTML = "<thead><tr><th>Roll Number</th><th>Student Name</th>";
+      if (divisionType === "div") {
+        headerHTML += "<th>1st Internal (50)</th>" +
+                      "<th>2nd Internal (50)</th>" +
+                      "<th>Modal Exam (100)</th>" +
+                      "<th>Assignment 1 (7.5)</th>" +
+                      "<th>Assignment 2 (7.5)</th>" +
+                      "<th>Class Perf. (10)</th>";
+      } else {
+        headerHTML += "<th>Internal Mark (50)</th>";
+      }
+      headerHTML += "<th>Total Internal (50)</th></tr></thead><tbody>";
+      table.innerHTML += headerHTML;
+      
+      // For each student, create a row with inputs.
+      students.forEach(student => {
+        let row = `<tr data-roll="${student.roll_number}">`;
+        row += `<td>${student.roll_number}</td>`;
+        row += `<td>${student.student_name}</td>`;
+        if (divisionType === "div") {
+          const savedData = loadExisting && internalData.data.marks ? internalData.data.marks[student.roll_number] : "";
+          row += `<td><input type="number" class="form-control mark-input" data-field="first_internal" placeholder="Out of 50" value="${savedData ? savedData.first_internal : ""}"></td>`;
+          row += `<td><input type="number" class="form-control mark-input" data-field="second_internal" placeholder="Out of 50" value="${savedData ? savedData.second_internal : ""}"></td>`;
+          row += `<td><input type="number" class="form-control mark-input" data-field="modal_exam" placeholder="Out of 100" value="${savedData ? savedData.modal_exam : ""}"></td>`;
+          row += `<td><input type="number" class="form-control mark-input" data-field="assignment1" placeholder="Out of 7.5" value="${savedData ? savedData.assignment1 : ""}"></td>`;
+          row += `<td><input type="number" class="form-control mark-input" data-field="assignment2" placeholder="Out of 7.5" value="${savedData ? savedData.assignment2 : ""}"></td>`;
+          row += `<td><input type="number" class="form-control mark-input" data-field="class_performance" placeholder="Out of 10" value="${savedData ? savedData.class_performance : ""}"></td>`;
+        } else {
+          const savedData = loadExisting && internalData.data.marks ? internalData.data.marks[student.roll_number] : "";
+          row += `<td><input type="number" class="form-control mark-input" data-field="internal" placeholder="Out of 50" value="${savedData ? savedData.internal : ""}"></td>`;
+        }
+        row += `<td><input type="text" class="form-control final-mark" readonly value="${loadExisting && internalData.data.marks && internalData.data.marks[student.roll_number] ? internalData.data.marks[student.roll_number].final_internal : ""}"></td>`;
+        row += "</tr>";
+        table.innerHTML += row;
+      });
+      
+      table.innerHTML += "</tbody>";
+      
+      // Attach input listener to mark inputs
+      attachInputListener();
+      
+      // Initially, disable action buttons if no data entered
+      checkIfAnyDataEntered();
+      
+      // Show the marks entry container
+      document.getElementById("marksEntryTableContainer").style.display = "block";
+      hideSpinnerOnButton(loadBtn);
+    });
+
+    /*************** Calculate Total Button ******************/
+    document.getElementById("calculateTotalBtn").addEventListener("click", () => {
+      const rows = document.querySelectorAll("#marksEntryTable tbody tr");
+      rows.forEach(row => {
+        calculateRowTotal(row, currentSubject.division_type);
+      });
+      checkIfAnyDataEntered();
+    });
+
+    function calculateRowTotal(row, divisionType) {
+      const inputs = row.querySelectorAll(".mark-input");
+      let finalMarkInput = row.querySelector(".final-mark");
+      
+      let allEmpty = true;
+      inputs.forEach(inp => {
+        if (inp.value.trim() !== "") {
+          allEmpty = false;
+        }
+      });
+      if (allEmpty) {
+        inputs.forEach(inp => { inp.value = "n/a"; });
+        finalMarkInput.value = "n/a";
+        return;
+      }
+      
+      inputs.forEach(inp => {
+        if (inp.value.trim() === "") {
+          inp.value = "n/a";
+        }
+      });
+      
+      if (divisionType === "div") {
+        let first = row.querySelector('input[data-field="first_internal"]').value;
+        let second = row.querySelector('input[data-field="second_internal"]').value;
+        let modal = row.querySelector('input[data-field="modal_exam"]').value;
+        let assign1 = row.querySelector('input[data-field="assignment1"]').value;
+        let assign2 = row.querySelector('input[data-field="assignment2"]').value;
+        let classPerf = row.querySelector('input[data-field="class_performance"]').value;
+        const values = [first, second, modal, assign1, assign2, classPerf];
+        if (values.some(val => val !== "n/a") && values.some(val => val === "n/a")) {
+          finalMarkInput.value = "n/a";
+          return;
+        }
+        if (values.every(val => val !== "n/a")) {
+          first = Number(first);
+          second = Number(second);
+          modal = Number(modal);
+          assign1 = Number(assign1);
+          assign2 = Number(assign2);
+          classPerf = Number(classPerf);
+          let firstScore = (first / 50) * 12.5;
+          let secondScore = (second / 50) * 12.5;
+          let modalScore = (modal / 100) * 12.5;
+          let scores = [firstScore, secondScore, modalScore].sort((a, b) => b - a);
+          let bestTwo = scores[0] + scores[1];
+          let assignmentsTotal = assign1 + assign2 + classPerf;
+          let totalInternal = bestTwo + assignmentsTotal;
+          finalMarkInput.value = isNaN(totalInternal) ? "n/a" : totalInternal.toFixed(2);
+        }
+      } else {
+        let mark = row.querySelector('input[data-field="internal"]').value;
+        finalMarkInput.value = (mark.trim() === "" || mark === "n/a") ? "n/a" : Number(mark).toFixed(2);
+      }
+    }
+
+    /*************** Save and Export to Excel ******************/
+    document.getElementById("saveExportBtn").addEventListener("click", async () => {
+      if (!confirm("Are you sure you want to save the marks?")) {
+        return;
+      }
+      const btn = document.getElementById("saveExportBtn");
+      showSpinnerOnButton(btn);
+      
+      const rows = document.querySelectorAll("#marksEntryTable tbody tr");
+      for (let row of rows) {
+        const finalVal = row.querySelector(".final-mark").value.trim();
+        if (finalVal === "") {
+          alert("Please calculate total marks for all rows before saving.");
+          hideSpinnerOnButton(btn);
+          return;
+        }
+      }
+      
+      const course = document.getElementById("internalCourse").value;
+      const semester = document.getElementById("internalSemester").value;
+      const subjectId = document.getElementById("subjectDropdown").value;
+      if (!subjectId) {
+        alert("Please select a subject.");
+        hideSpinnerOnButton(btn);
+        return;
+      }
+      const divisionType = document.getElementById("subjectDropdown").options[document.getElementById("subjectDropdown").selectedIndex].dataset.divisionType;
+      
+      const tableRows = document.querySelectorAll("#marksEntryTable tbody tr");
+      let marksData = {};
+      tableRows.forEach(row => {
+        const roll = row.dataset.roll;
+        let entry = {};
+        if (divisionType === "div") {
+          entry.first_internal = row.querySelector('input[data-field="first_internal"]').value;
+          entry.second_internal = row.querySelector('input[data-field="second_internal"]').value;
+          entry.modal_exam = row.querySelector('input[data-field="modal_exam"]').value;
+          entry.assignment1 = row.querySelector('input[data-field="assignment1"]').value;
+          entry.assignment2 = row.querySelector('input[data-field="assignment2"]').value;
+          entry.class_performance = row.querySelector('input[data-field="class_performance"]').value;
+          entry.final_internal = row.querySelector('.final-mark').value;
+        } else {
+          entry.internal = row.querySelector('input[data-field="internal"]').value;
+          entry.final_internal = row.querySelector('.final-mark').value;
+        }
+        marksData[roll] = entry;
+      });
+      
+      const payload = { marks: marksData };
+      
+      const { data: existingRecord } = await supabaseClient
+        .from("internal_marks")
+        .select("*")
+        .eq("course", course)
+        .eq("semester", semester)
+        .eq("subject_id", subjectId)
+        .maybeSingle();
+      
+      let result;
+      if (existingRecord) {
+        if (!confirm("Data for this subject already exists. Do you want to overwrite it?")) {
+          hideSpinnerOnButton(btn);
+          return;
+        }
+        result = await supabaseClient
+          .from("internal_marks")
+          .update({ data: payload })
+          .eq("course", course)
+          .eq("semester", semester)
+          .eq("subject_id", subjectId);
+      } else {
+        result = await supabaseClient
+          .from("internal_marks")
+          .insert([{ course: course, semester: semester, subject_id: subjectId, data: payload }]);
+      }
+      
+      hideSpinnerOnButton(btn);
+      
+      if (result.error) {
+        alert("Error saving marks: " + result.error.message);
+      } else {
+        alert("Internal marks saved successfully.");
+        exportTableToExcel();
+      }
+    });
+
+    /*************** Export Table to Excel Function ******************/
+    function exportTableToExcel() {
+      const table = document.getElementById("marksEntryTable");
+      if (!table) {
+        alert("No table available to export.");
+        return;
+      }
+      
+      let data = [];
+      // Get header row data
+      const headerRow = table.querySelector("thead tr");
+      let headerData = [];
+      for (let cell of headerRow.cells) {
+        headerData.push(cell.innerText.trim());
+      }
+      data.push(headerData);
+      
+      // Get body rows data
+      const bodyRows = table.querySelectorAll("tbody tr");
+      bodyRows.forEach(row => {
+        let rowData = [];
+        Array.from(row.cells).forEach(cell => {
+          let input = cell.querySelector("input");
+          if (input) {
+            rowData.push(input.value);
+          } else {
+            rowData.push(cell.innerText.trim());
+          }
+        });
+        data.push(rowData);
+      });
+      
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Marks");
+      
+      const course = document.getElementById("internalCourse").value;
+      const semester = document.getElementById("internalSemester").value;
+      const subjectDropdown = document.getElementById("subjectDropdown");
+      const subjectNameRaw = subjectDropdown.options[subjectDropdown.selectedIndex].textContent;
+      const subjectName = subjectNameRaw.split(" (")[0]; // Remove division info if present
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const dateString = `${yyyy}-${mm}-${dd}`;
+      const fileName = `${course}_sem${semester}_${subjectName}_${dateString}.xlsx`;
+      
+      XLSX.writeFile(wb, fileName);
+    }
+  </script>
+</body>
+</html>
