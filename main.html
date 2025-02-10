@@ -333,6 +333,16 @@ h1 {
         
       </div>
     </div>
+
+    <div class="card mb-4">
+      <div class="card-header">Internal Marks</div>
+      <div class="card-body">
+        <button id="internalmarks" class="btn btn-info mb-3">Add or modify</button>
+          <!-- Report will be loaded here -->
+        </div>
+        
+      </div>
+    </div>
     
   </div>
 
@@ -422,7 +432,9 @@ document.getElementById('hour').addEventListener('change', () => {
   loadAttendanceReport();
 });
 
-
+document.getElementById("internalmarks").addEventListener("click", function() {
+    window.location.href = "b.html";
+});
     /*************** Functions for Session Attendance ******************/
     async function generateStudentList() {
   // Get current session details
