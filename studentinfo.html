@@ -135,6 +135,55 @@
       align-items: center;
       z-index: 10000;
     }
+    @media (max-width: 768px) {
+  /* Mobile Adjustments */
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  h2 {
+    font-size: 1.3rem;
+  }
+
+  .card-body {
+    padding: 10px;
+  }
+
+  #studentDashboard .dashboard-container {
+    flex-direction: column;
+  }
+
+  #totalAttendanceBox h1 {
+    font-size: 1.8rem;
+  }
+
+  .btn {
+    font-size: 0.9rem;
+  }
+
+  /* Internal Marks Overlay */
+  #internalMarksOverlay .card {
+    max-width: 90%;
+  }
+
+  /* Internal Marks Table Scrollable */
+  #internalMarksContent {
+    max-height: 60vh;
+    overflow-y: auto;
+    overflow-x: auto;
+  }
+
+  /* Table Adjustments */
+  table th, table td {
+    font-size: 0.85rem;
+  }
+
+  /* Internal Marks Table for Small Screens */
+  table {
+    min-width: 600px; /* Ensure table content doesn't collapse */
+  }
+}
   </style>
 </head>
 <body>
@@ -197,9 +246,9 @@
         </div>
         <!-- Action Buttons -->
         <div class="text-center mt-4">
-          <button id="seeMoreDetailsBtn" class="btn btn-secondary">See More Details</button>
+          <button id="seeMoreDetailsBtn" class="btn btn-secondary">More Attendance Details</button> 
           <!-- New "See Internal Marks" button -->
-          <button id="seeInternalMarksBtn" class="btn btn-info ms-2">See Internal Marks</button>
+         <button id="seeInternalMarksBtn" class="btn btn-info ms-2">See Internal Marks</button>
         </div>
       </div>
     </div>
@@ -314,6 +363,16 @@
         document.getElementById("multipleDateDiv").style.display = "block";
       }
     }
+
+    document.getElementById("seeInternalMarksBtn").addEventListener("click", function() {
+    const button = this;
+    showSpinnerOnButton(button);
+
+    // Simulate loading (remove this if navigating to another page or fetching data)
+    setTimeout(() => {
+        hideSpinnerOnButton(button);
+    }, 3000); // Adjust delay as needed
+});
 
     // Reset dashboard (update boxes and load report)
     function resetDashboard() {
