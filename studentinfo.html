@@ -40,7 +40,6 @@
     .card {
       box-shadow: 0 0 50px rgba(6, 190, 246, 0.3);
       margin-bottom: 1rem;
-      
     }
     .card-header {
       background-color: #007bff;
@@ -96,11 +95,10 @@
     }
     /* Reduced Size for the Report Section */
     #reportContainer {
-  max-height: 500px; /* Increased from 250px */
-  overflow-y: auto;
-  font-size: 0.9rem;
-}
-
+      max-height: 500px; /* Increased from 250px */
+      overflow-y: auto;
+      font-size: 0.9rem;
+    }
     /* Overlay (Popup) Styles */
     #overlay {
       position: fixed;
@@ -124,6 +122,19 @@
       max-height: 400px;
       overflow-y: auto;
     }
+    /* Internal Marks Overlay Styles */
+    #internalMarksOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    }
   </style>
 </head>
 <body>
@@ -131,7 +142,6 @@
   <div class="container" id="mainContainer">
     <h1 class="mb-4 text-center"><b>MIIT AttendX</b></h1>
    
-
     <!-- Student Login Form -->
     <div class="card">
       <div class="card-header">Enter Your Details</div>
@@ -185,9 +195,11 @@
             </div>
           </div>
         </div>
-        <!-- See More Details Button -->
+        <!-- Action Buttons -->
         <div class="text-center mt-4">
           <button id="seeMoreDetailsBtn" class="btn btn-secondary">See More Details</button>
+          <!-- New "See Internal Marks" button -->
+          <button id="seeInternalMarksBtn" class="btn btn-info ms-2">See Internal Marks</button>
         </div>
       </div>
     </div>
@@ -251,11 +263,26 @@
       </div>
     </div>
   </div>
-  <!-- End Overlay -->
+  <!-- End Attendance Overlay -->
+
+  <!-- Internal Marks Overlay -->
+  <div id="internalMarksOverlay" style="display: none; justify-content: center; align-items: center;">
+    <div class="card" style="width: 90%; max-width: 800px;">
+      <div class="card-header">Internal Marks</div>
+      <div class="card-body">
+        <!-- This container will be populated with subject-wise internal marks -->
+        <div id="internalMarksContent"></div>
+        <div class="text-center mt-3">
+          <button id="internalMarksBackBtn" class="btn btn-secondary">Back</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- End Internal Marks Overlay -->
 
   <script>
-    // Initialize Supabase client (replace 'YOUR_SUPABASE_KEY' with your actual key)
-  const supabaseUrl = 'https://elxyhkfuuugjskallwsp.supabase.co';
+    // Initialize Supabase client
+    const supabaseUrl = 'https://elxyhkfuuugjskallwsp.supabase.co';
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVseHloa2Z1dXVnanNrYWxsd3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg4MjA5ODksImV4cCI6MjA1NDM5Njk4OX0.BAEvcCVIQiVdsg0m3xX72Xi0p-vnJ4WqfZU0mE_Tuk0';
     const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
@@ -484,7 +511,7 @@
       hideSpinnerOnButton(btn);
     });
 
-    // "See More Details" button opens the overlay
+    // "See More Details" button opens the attendance overlay
     document.getElementById("seeMoreDetailsBtn").addEventListener("click", function(){
       mainContainer.style.display = 'none';
       // Reset the overlay to its initial state
@@ -499,6 +526,106 @@
           mainContainer.style.display = 'block';
       });
       overlay.style.display = 'flex';
+    });
+
+    // "See Internal Marks" button opens the internal marks overlay
+    document.getElementById("seeInternalMarksBtn").addEventListener("click", fetchInternalMarks);
+
+    // Function to fetch and display internal marks in the overlay
+    async function fetchInternalMarks() {
+      const internalMarksContent = document.getElementById("internalMarksContent");
+      internalMarksContent.innerHTML = `<div class="d-flex justify-content-center my-3">
+         <div class="spinner-border text-primary" role="status">
+           <span class="visually-hidden">Loading...</span>
+         </div>
+       </div>`;
+      
+      const course = document.getElementById("studentCourse").value;
+      const semester = document.getElementById("studentSemester").value;
+      const rollNumber = document.getElementById("studentRoll").value.trim();
+      const subjectTable = `${course.toLowerCase()}_sem${semester}_subjects`;
+      
+      // Fetch subjects for the course and semester
+      let { data: subjects, error: subjectError } = await supabaseClient
+        .from(subjectTable)
+        .select("subject_id, subject_name, division_type")
+        .order("subject_name", { ascending: true });
+      if (subjectError) {
+        alert("Error fetching subjects: " + subjectError.message);
+        return;
+      }
+      
+      // Fetch internal marks records for the course and semester
+      let { data: internalMarksRows, error: internalMarksError } = await supabaseClient
+        .from("internal_marks")
+        .select("*")
+        .eq("course", course)
+        .eq("semester", semester);
+      if (internalMarksError) {
+        alert("Error fetching internal marks: " + internalMarksError.message);
+        return;
+      }
+      
+      let htmlContent = "";
+      subjects.forEach(subject => {
+        // Find the internal marks row corresponding to the subject
+        let marksRow = internalMarksRows ? internalMarksRows.find(row => row.subject_id === subject.subject_id) : null;
+        // Retrieve the marks for the student (if available)
+        let studentMarks = marksRow && marksRow.data && marksRow.data.marks && marksRow.data.marks[rollNumber] ? marksRow.data.marks[rollNumber] : null;
+        
+        let first_internal = studentMarks && studentMarks.first_internal !== undefined ? studentMarks.first_internal : "n/a";
+        let second_internal = studentMarks && studentMarks.second_internal !== undefined ? studentMarks.second_internal : "n/a";
+        let modal_exam = studentMarks && studentMarks.modal_exam !== undefined ? studentMarks.modal_exam : "n/a";
+        let assignment1 = studentMarks && studentMarks.assignment1 !== undefined ? studentMarks.assignment1 : "n/a";
+        let assignment2 = studentMarks && studentMarks.assignment2 !== undefined ? studentMarks.assignment2 : "n/a";
+        let class_performance = studentMarks && studentMarks.class_performance !== undefined ? studentMarks.class_performance : "n/a";
+        let final_internal = studentMarks && studentMarks.final_internal !== undefined ? studentMarks.final_internal : "n/a";
+        
+        htmlContent += `
+        <div class="card mb-3">
+          <div class="card-header">
+            ${subject.subject_name} (Internal Marks)
+          </div>
+          <div class="card-body">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>1st Internal</th>
+                  <th>2nd Internal</th>
+                  <th>Modal Exam</th>
+                  <th>1st Assignment</th>
+                  <th>2nd Assignment</th>
+                  <th>Class Performance</th>
+                  <th>Total Internal</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>${first_internal}</td>
+                  <td>${second_internal}</td>
+                  <td>${modal_exam}</td>
+                  <td>${assignment1}</td>
+                  <td>${assignment2}</td>
+                  <td>${class_performance}</td>
+                  <td>${final_internal}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+      });
+      
+      if (!htmlContent) {
+        htmlContent = "<p>No internal marks records found.</p>";
+      }
+      
+      internalMarksContent.innerHTML = htmlContent;
+      document.getElementById("internalMarksOverlay").style.display = "flex";
+    }
+
+    // "Back" button for the Internal Marks overlay
+    document.getElementById("internalMarksBackBtn").addEventListener("click", function(){
+      document.getElementById("internalMarksOverlay").style.display = "none";
     });
 
     // Fetch Detailed Attendance for the overlay (shows table in the same overlay)
