@@ -1,106 +1,271 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Attendance Management - Login</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #f4f4f4;
-            flex-direction: column;
-        }
-        .login-container {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            width: 300px;
-        }
-        h2 {
-            margin-bottom: 10px;
-        }
-        select, input, button {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        #facultyCredentials {
-            display: none;
-        }
-        #errorMessage {
-            color: red;
-            font-size: 14px;
-            margin-top: 5px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <!-- Mobile-friendly meta tag -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Attendance Management - Login</title>
+  <!-- Google Font for sharp headings -->
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&display=swap" rel="stylesheet">
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <style>
+    /* Global Styles */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background-color: #000; /* Black background */
+      font-family: Arial, sans-serif;
+      color: #fff;
+    }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      touch-action: manipulation;
+    }
+    /* Starry Background */
+    #stars {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: -1;
+      pointer-events: none;
+    }
+    .star {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: #fff;
+      border-radius: 50%;
+      opacity: 0.8;
+      animation: twinkle 2s infinite alternate;
+    }
+    @keyframes twinkle {
+      from { opacity: 0.2; }
+      to { opacity: 1; }
+    }
+    /* Glowing Login Container */
+    .login-container {
+      background: #010101;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(88, 87, 87, 0.2);
+      text-align: center;
+      width: 90%;
+      max-width: 320px;
+      animation: glow 4s infinite alternate;
+    }
+    @keyframes glow {
+      0%   { box-shadow: 0 0 10px 2px rgba(255, 0, 0, 0.7); }
+      50%  { box-shadow: 0 0 10px 2px rgba(0, 255, 0, 0.7); }
+      100% { box-shadow: 0 0 10px 2px rgba(0, 0, 255, 0.7); }
+    }
+    /* Heading and Text */
+    .login-container h2 {
+      font-family: 'Oswald', sans-serif;
+      font-size: 2rem;
+      margin-bottom: 10px;
+      letter-spacing: 1px;
+    }
+    .login-container p {
+      margin-bottom: 20px;
+    }
+    /* Form Controls */
+    select, input, button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ffffff;
+      border-radius: 5px;
+      background: #000000;
+      color: #fff;
+      font-size: 1rem;
+    }
+    button {
+      background-color: #000000;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      position: relative;
+    }
+    button:hover {
+      background-color: #002349;
+    }
+    /* Faculty Credentials Container */
+    #facultyCredentials {
+      display: none;
+    }
+    /* Password Input with Toggle Icon */
+    .password-container {
+      position: relative;
+      width: 100%;
+    }
+    .password-container input {
+      padding-right: 50px;
+    }
+    .toggle-password {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      user-select: none;
+      font-size: 0.9rem;
+      color: #aaa;
+    }
+    /* Error Message */
+    #errorMessage {
+      color: #f00;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+    /* Disabled Button Style */
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  </style>
 </head>
 <body>
+  <!-- Starry Background Container -->
+  <div id="stars"></div>
 
-    <div class="login-container">
-        <h2>MIIT AttendX</h2>
-        <p>Please select your role to proceed.</p>
-
-        <select id="userType" onchange="handleUserTypeChange()">
-            <option value="student">Student</option>
-            <option value="faculty">Faculty</option>
-        </select>
-
-        <!-- Student Login Button -->
-        <button id="studentLogin" onclick="studentLogin()">Login as Student</button>
-
-        <!-- Faculty Login Fields -->
-        <div id="facultyCredentials">
-           
-            <input type="password" id="password" placeholder="Password">
-            <button onclick="facultyLogin()">Login as Faculty</button>
-            <p id="errorMessage"></p>
-        </div>
+  <!-- Login Container -->
+  <div class="login-container">
+    <h2>MIIT AttendX</h2>
+    <p>Please select your role to proceed.</p>
+    <select id="userType" onchange="handleUserTypeChange()">
+      <option value="student">Student</option>
+      <option value="faculty">Faculty</option>
+    </select>
+    <!-- Student Login Button -->
+    <button id="studentLogin" onclick="studentLogin()">Login as Student</button>
+    <!-- Faculty Login Fields -->
+    <div id="facultyCredentials">
+      <div class="password-container">
+        <input type="password" id="password" placeholder="Password">
+        <span id="togglePassword" class="toggle-password" onclick="togglePasswordVisibility()">Show</span>
+      </div>
+      <button id="facultyLoginBtn" disabled onclick="facultyLogin()">Login as Faculty</button>
+      <p id="errorMessage"></p>
     </div>
+  </div>
 
-    <script>
-        function handleUserTypeChange() {
-            const userType = document.getElementById("userType").value;
-            if (userType === "student") {
-                document.getElementById("studentLogin").style.display = "block";
-                document.getElementById("facultyCredentials").style.display = "none";
-            } else {
-                document.getElementById("studentLogin").style.display = "none";
-                document.getElementById("facultyCredentials").style.display = "block";
-            }
+  <script>
+    /* Generate Starry Background */
+    function generateStars(count) {
+      const starsContainer = document.getElementById("stars");
+      for (let i = 0; i < count; i++) {
+        const star = document.createElement("div");
+        star.className = "star";
+        star.style.top = Math.random() * 100 + "%";
+        star.style.left = Math.random() * 100 + "%";
+        star.style.animationDelay = Math.random() * 4 + "s";
+        starsContainer.appendChild(star);
+      }
+    }
+    document.addEventListener("DOMContentLoaded", function() {
+      generateStars(200); // More stars for better visibility
+      // Enable faculty login button only when password is provided
+      const passwordInput = document.getElementById("password");
+      const facultyLoginBtn = document.getElementById("facultyLoginBtn");
+      passwordInput.addEventListener("input", function() {
+        facultyLoginBtn.disabled = (this.value.trim().length === 0);
+      });
+    });
+
+    /* Role Selection Handler */
+    function handleUserTypeChange() {
+      const userType = document.getElementById("userType").value;
+      if (userType === "student") {
+        document.getElementById("studentLogin").style.display = "block";
+        document.getElementById("facultyCredentials").style.display = "none";
+      } else {
+        document.getElementById("studentLogin").style.display = "none";
+        document.getElementById("facultyCredentials").style.display = "block";
+      }
+    }
+
+    /* Toggle Password Visibility */
+    function togglePasswordVisibility() {
+      const passwordInput = document.getElementById("password");
+      const toggleIcon = document.getElementById("togglePassword");
+      if (passwordInput.type === "password") {
+        passwordInput.type = "text";
+        toggleIcon.textContent = "Hide";
+      } else {
+        passwordInput.type = "password";
+        toggleIcon.textContent = "Show";
+      }
+    }
+
+    /* Spinner Helpers */
+    function showSpinnerOnButton(button) {
+      button.disabled = true;
+      const spinner = document.createElement("span");
+      spinner.className = "spinner-border spinner-border-sm ms-2";
+      spinner.style.verticalAlign = "middle";
+      spinner.setAttribute("aria-hidden", "true");
+      button.appendChild(spinner);
+    }
+    function hideSpinnerOnButton(button) {
+      button.disabled = false;
+      const spinner = button.querySelector(".spinner-border");
+      if (spinner) {
+        spinner.remove();
+      }
+    }
+
+    /* Simulated Student Login (2-second delay) */
+    function studentLogin() {
+      const btn = document.getElementById("studentLogin");
+      showSpinnerOnButton(btn);
+      setTimeout(function() {
+        hideSpinnerOnButton(btn);
+        alert("Student authentication successful!");
+        window.location.href = "studentinfo.html";
+      }, 2000);
+    }
+
+    /* Initialize Supabase Client */
+    const supabaseUrl = 'https://elxyhkfuuugjskallwsp.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVseHloa2Z1dXVnanNrYWxsd3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg4MjA5ODksImV4cCI6MjA1NDM5Njk4OX0.BAEvcCVIQiVdsg0m3xX72Xi0p-vnJ4WqfZU0mE_Tuk0';
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+    /* Faculty Login with Supabase (2-second delay simulated) */
+    async function facultyLogin() {
+      const btn = document.getElementById("facultyLoginBtn");
+      showSpinnerOnButton(btn);
+      const enteredPassword = document.getElementById("password").value;
+      
+      // Simulate processing delay of 2 seconds
+      setTimeout(async function() {
+        const { data, error } = await supabaseClient
+          .from("teacher_passkey")
+          .select("passkey")
+          .eq("id", 1)
+          .maybeSingle();
+        hideSpinnerOnButton(btn);
+        if (error || !data) {
+          alert("Error fetching credentials.");
+          return;
         }
-
-        function studentLogin() {
-            window.location.href = "studentinfo.html"; // Redirect to student page
+        const storedPassword = data.passkey;
+        if (enteredPassword === storedPassword) {
+          alert("Faculty authentication successful!");
+          window.location.href = "main.html";
+        } else {
+          alert("Invalid username or password!");
+          document.getElementById("errorMessage").textContent = "Invalid username or password!";
         }
-
-        function facultyLogin() {
-           
-            const password = document.getElementById("password").value;
-
-            if (password === "10101010") {
-                window.location.href = "main.html"; // Redirect to faculty page
-            } else {
-                document.getElementById("errorMessage").textContent = "Invalid username or password!";
-            }
-        }
-    </script>
-
+      }, 2000);
+    }
+  </script>
 </body>
 </html>
