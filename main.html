@@ -433,8 +433,16 @@ document.getElementById('hour').addEventListener('change', () => {
 });
 
 document.getElementById("internalmarks").addEventListener("click", function() {
-    window.location.href = "b.html";
+    const button = this;
+    showSpinnerOnButton(button);
+
+    // Small delay to show the spinner before navigation
+    setTimeout(() => {
+        window.location.href = "b.html";
+    }, 1000); // Adjust delay if needed
 });
+
+
     /*************** Functions for Session Attendance ******************/
     async function generateStudentList() {
   // Get current session details
