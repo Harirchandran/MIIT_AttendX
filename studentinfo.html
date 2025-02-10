@@ -11,8 +11,14 @@
   <!-- SheetJS (for Excel export) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
-    body { padding: 20px; }
-    .hidden { display: none; }
+    /* Global Styles */
+    body {
+      padding: 20px;
+      background-color: #f8f9fa;
+    }
+    .hidden {
+      display: none;
+    }
     .status-box {
       display: inline-block;
       width: 140px;
@@ -20,20 +26,114 @@
       margin: 5px;
       text-align: center;
       border-radius: 5px;
-      color: white;
+      color: #fff;
       font-weight: bold;
       font-size: 0.9em;
     }
-    .status-green { background-color: #28a745; }
-    .status-red { background-color: #dc3545; }
+    .status-green {
+      background-color: #28a745;
+    }
+    .status-red {
+      background-color: #dc3545;
+    }
+    /* Card Styles */
+    .card {
+      box-shadow: 0 0 50px rgba(6, 190, 246, 0.3);
+      margin-bottom: 1rem;
+      
+    }
+    .card-header {
+      background-color: #007bff;
+      color: #fff;
+      font-weight: bold;
+    }
+    .btn-info {
+      background-color: #17a2b8;
+      border: none;
+    }
+    .btn-info:hover {
+      background-color: #138496;
+    }
+    label {
+      font-weight: 600;
+    }
+    /* Dashboard Styles */
+    #studentDashboard .card-body {
+      padding: 20px;
+    }
+    .dashboard-container {
+      display: flex;
+      gap: 20px;
+      align-items: stretch;
+    }
+    .dashboard-container > div {
+      flex: 1;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      padding: 5px;
+      text-align: center;
+    }
+    /* Big Box: Overall Attendance */
+    #totalAttendanceBox p {
+      margin: 0 0 10px;
+      font-weight: bold;
+    }
+    #totalAttendanceBox h1 {
+      font-size: 3rem;
+      margin: 0;
+    }
+    #totalAttendanceBox small {
+      display: block;
+      margin-top: 10px;
+      color: #666;
+    }
+    /* Small Box: Today's Attendance */
+    #todayAttendanceBox h5 {
+      margin-bottom: 15px;
+    }
+    #todayAttendanceBox div {
+      margin-bottom: 8px;
+    }
+    /* Reduced Size for the Report Section */
+    #reportContainer {
+  max-height: 500px; /* Increased from 250px */
+  overflow-y: auto;
+  font-size: 0.9rem;
+}
+
+    /* Overlay (Popup) Styles */
+    #overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    #overlay .overlay-content {
+      width: 90%;
+      max-width: 600px;
+    }
+    /* For the detailed attendance table in the overlay,
+       add a fixed max height so that a vertical scrollbar (slider) appears if needed */
+    #detailsTableContainer {
+      max-height: 400px;
+      overflow-y: auto;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1 class="mb-4 text-center">Student Attendance Dashboard</h1>
+  <!-- Main Container -->
+  <div class="container" id="mainContainer">
+    <h1 class="mb-4 text-center"><b>MIIT AttendX</b></h1>
+   
 
     <!-- Student Login Form -->
-    <div class="card mb-4">
+    <div class="card">
       <div class="card-header">Enter Your Details</div>
       <div class="card-body">
         <div class="row">
@@ -56,31 +156,44 @@
           <div class="col-md-4 mb-2">
             <label for="studentRoll" class="form-label">Roll Number</label>
             <input type="text" id="studentRoll" class="form-control" placeholder="Enter Roll Number"
-                   pattern="\d{6,}" title="Roll number must be at least 6 digits" />
+                   pattern="\d{6}" title="Roll number must be exactly 6 digits" maxlength="6" required
+                   oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);" />
           </div>
         </div>
         <button id="loadDashboardBtn" class="btn btn-primary mt-3" disabled>View Dashboard</button>
       </div>
     </div>
 
-    <!-- Student Dashboard Section (appears just below the login form) -->
-    <div id="studentDashboard" class="hidden">
-      <h2 class="mb-4">Welcome, <span id="studentName"></span>!</h2>
-      <div class="card mb-4">
-        <div class="card-header">Student Information</div>
-        <div class="card-body">
-          <p><strong>Roll Number:</strong> <span id="studentRollDisplay"></span></p>
-          <p><strong>Course:</strong> <span id="studentCourseDisplay"></span></p>
-          <p><strong>Semester:</strong> <span id="studentSemesterDisplay"></span></p>
-          <p><strong>Total Attendance:</strong> <span id="studentAttendance" class="fw-bold"></span></p>
-          <div id="eligibilityMessage" class="mt-2"></div>
-          <div id="todayAttendanceStatus" class="mt-2"></div>
+    <!-- New Student Dashboard Section -->
+    <div id="studentDashboard" class="card hidden">
+      <div class="card-header">Dashboard</div>
+      <div class="card-body">
+        <!-- Welcome Message -->
+        <h2 id="welcomeMessage" class="mb-4"></h2>
+        <div class="dashboard-container">
+          <!-- Big Box: Overall Attendance Percentage -->
+          <div id="totalAttendanceBox">
+            <p>Your Total Percentage</p>
+            <h1 id="totalAttendancePercentage">0%</h1>
+            <small id="totalWorkingDays">Working Days: 0</small>
+          </div>
+          <!-- Small Box: Today's Attendance -->
+          <div id="todayAttendanceBox">
+            <h5>Today's Attendance</h5>
+            <div id="todayAttendanceStatus">
+              <!-- Hourly statuses and total day score will be inserted here -->
+            </div>
+          </div>
+        </div>
+        <!-- See More Details Button -->
+        <div class="text-center mt-4">
+          <button id="seeMoreDetailsBtn" class="btn btn-secondary">See More Details</button>
         </div>
       </div>
     </div>
 
-    <!-- Attendance Report Section (below the dashboard) -->
-    <div class="card mb-4">
+    <!-- Attendance Report Section (reduced size) -->
+    <div class="card">
       <div class="card-header">Common Attendance Report</div>
       <div class="card-body">
         <div class="mb-4">
@@ -91,73 +204,102 @@
         <button id="refreshReportBtn" class="btn btn-secondary mt-3">Refresh Report</button>
       </div>
     </div>
+  </div>
+  <!-- End Main Container -->
 
-    <!-- Detailed Attendance Fetch Section -->
-    <div class="card mb-4">
-      <div class="card-header">Fetch Your Attendance Details</div>
-      <div class="card-body">
-        <button id="toggleDetailsFormBtn" class="btn btn-info mb-3">
-          Show/Hide Attendance Details Form
-        </button>
-        <div id="detailsForm" class="mb-3" style="display: none;">
-          <div class="mb-3">
-            <label for="detailDuration" class="form-label">Duration</label>
-            <select id="detailDuration" class="form-select">
-              <option value="single">Single Day</option>
-              <option value="multiple">Multiple Days</option>
-            </select>
-          </div>
-          <div id="singleDateDiv" class="mb-3">
-            <label for="singleDate" class="form-label">Select Date</label>
-            <input type="date" id="singleDate" class="form-control" />
-          </div>
-          <div id="multipleDateDiv" class="mb-3" style="display: none;">
-            <label class="form-label">Select Date Range</label>
-            <div class="row">
-              <div class="col">
-                <input type="date" id="fromDate" class="form-control" placeholder="From Date" />
-              </div>
-              <div class="col">
-                <input type="date" id="toDate" class="form-control" placeholder="To Date" />
+  <!-- Overlay for Fetch Attendance Details Form and Detailed Table -->
+  <div id="overlay">
+    <div class="overlay-content">
+      <div class="card">
+        <div class="card-header">Fetch Your Attendance Details</div>
+        <div class="card-body">
+          <!-- Form Content -->
+          <div id="detailsForm">
+            <div class="mb-3">
+              <label for="detailDuration" class="form-label">Duration</label>
+              <select id="detailDuration" class="form-select">
+                <option value="single">Single Day</option>
+                <option value="multiple">Multiple Days</option>
+              </select>
+            </div>
+            <div id="singleDateDiv" class="mb-3">
+              <label for="singleDate" class="form-label">Select Date</label>
+              <input type="date" id="singleDate" class="form-control" />
+            </div>
+            <div id="multipleDateDiv" class="mb-3" style="display: none;">
+              <label class="form-label">Select Date Range</label>
+              <div class="row">
+                <div class="col">
+                  <input type="date" id="fromDate" class="form-control" placeholder="From Date" />
+                </div>
+                <div class="col">
+                  <input type="date" id="toDate" class="form-control" placeholder="To Date" />
+                </div>
               </div>
             </div>
           </div>
-          <button id="fetchAttendanceDetailsBtn" class="btn btn-primary">Submit</button>
-        </div>
-        <div id="attendanceDetailsTableContainer" class="mt-4" style="display: none;">
-          <h5>Individual Attendance Details</h5>
-          <div class="table-responsive">
-            <table id="attendanceDetailsTable" class="table table-bordered">
-              <!-- Table header and body will be generated dynamically -->
-            </table>
+          <!-- Table Container for Detailed Attendance -->
+          <div id="detailsTableContainer" class="table-responsive" style="display: none;">
+            <table id="attendanceDetailsTable" class="table table-bordered"></table>
           </div>
-          <button id="exportDetailsToExcelBtn" class="btn btn-secondary mt-3">
-            Export to Excel(only work in desktop)
-          </button>
+          <!-- Buttons Container -->
+          <div class="text-center" id="overlayButtons">
+            <button id="viewDetailsBtn" class="btn btn-primary">View</button>
+            <button id="goBackBtn" class="btn btn-secondary">Go Back</button>
+          </div>
         </div>
       </div>
     </div>
   </div>
-  <!-- End Container -->
+  <!-- End Overlay -->
 
   <script>
-    // Initialize Supabase client (replace with your actual key)
-    const supabaseUrl = 'https://elxyhkfuuugjskallwsp.supabase.co';
+    // Initialize Supabase client (replace 'YOUR_SUPABASE_KEY' with your actual key)
+  const supabaseUrl = 'https://elxyhkfuuugjskallwsp.supabase.co';
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVseHloa2Z1dXVnanNrYWxsd3NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg4MjA5ODksImV4cCI6MjA1NDM5Njk4OX0.BAEvcCVIQiVdsg0m3xX72Xi0p-vnJ4WqfZU0mE_Tuk0';
-   
     const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-    // Set the default date for the report input to today's date
+    // Set default date for report input to today's date
     document.getElementById("studentDate").value = new Date().toISOString().split("T")[0];
 
-    // Define hours array for the report (must match your DB records)
-    const hours = [
-      "9:30-10:30",
-      "10:30-11:30",
-      "11:30-12:30",
-      "1:30-2:30",
-      "2:30-3:30"
-    ];
+    // DOM references
+    const rollInput = document.getElementById("studentRoll");
+    const loadDashboardBtn = document.getElementById("loadDashboardBtn");
+    const mainContainer = document.getElementById("mainContainer");
+    const overlay = document.getElementById("overlay");
+
+    // Enable "View Dashboard" button only if roll number is exactly 6 digits
+    loadDashboardBtn.disabled = true;
+    rollInput.addEventListener("input", () => {
+      const value = rollInput.value.trim();
+      loadDashboardBtn.disabled = !/^\d{6}$/.test(value);
+    });
+
+    // Toggle date inputs based on duration selection in the overlay form
+    document.getElementById("detailDuration").addEventListener("change", toggleDateInputs);
+    function toggleDateInputs() {
+      const duration = document.getElementById("detailDuration").value;
+      if (duration === "single") {
+        document.getElementById("singleDateDiv").style.display = "block";
+        document.getElementById("multipleDateDiv").style.display = "none";
+      } else {
+        document.getElementById("singleDateDiv").style.display = "none";
+        document.getElementById("multipleDateDiv").style.display = "block";
+      }
+    }
+
+    // Reset dashboard (update boxes and load report)
+    function resetDashboard() {
+      document.getElementById("studentDashboard").classList.add("hidden");
+      document.getElementById("welcomeMessage").textContent = "";
+      document.getElementById("totalAttendancePercentage").innerHTML = "0%";
+      document.getElementById("totalWorkingDays").textContent = "Working Days: 0";
+      document.getElementById("todayAttendanceStatus").innerHTML = "";
+      loadAttendanceReport();
+    }
+    document.getElementById("studentCourse").addEventListener("change", resetDashboard);
+    document.getElementById("studentSemester").addEventListener("change", resetDashboard);
+    document.getElementById("studentDate").addEventListener("change", resetDashboard);
 
     // Spinner helper for containers
     function showSpinnerInContainer(container) {
@@ -167,14 +309,13 @@
         </div>
       </div>`;
     }
-
-    // Spinner helper functions for buttons
+    // Spinner helper for buttons
     function showSpinnerOnButton(button) {
       button.disabled = true;
       const spinner = document.createElement("span");
       spinner.className = "spinner-border spinner-border-sm ms-2";
       spinner.role = "status";
-      spinner.ariaHidden = "true";
+      spinner.setAttribute("aria-hidden", "true");
       button.appendChild(spinner);
     }
     function hideSpinnerOnButton(button) {
@@ -183,38 +324,7 @@
       if (spinner) spinner.remove();
     }
 
-    // Disable "View Dashboard" button until a valid roll is entered
-    const rollInput = document.getElementById("studentRoll");
-    const loadDashboardBtn = document.getElementById("loadDashboardBtn");
-    loadDashboardBtn.disabled = true;
-    rollInput.addEventListener("input", () => {
-      const value = rollInput.value;
-      if (/^\d{6,}$/.test(value)) {
-        loadDashboardBtn.disabled = false;
-      } else {
-        loadDashboardBtn.disabled = true;
-      }
-    });
-
-    // Reset the dashboard when form values change (except roll number, so that report remains)
-    function resetDashboard() {
-      document.getElementById("studentDashboard").classList.add("hidden");
-      document.getElementById("studentName").textContent = "";
-      document.getElementById("studentRollDisplay").textContent = "";
-      document.getElementById("studentCourseDisplay").textContent = "";
-      document.getElementById("studentSemesterDisplay").textContent = "";
-      document.getElementById("studentAttendance").textContent = "";
-      // We leave the report container intact so that the report remains visible
-      document.getElementById("attendanceDetailsTableContainer").style.display = "none";
-      document.getElementById("detailsForm").style.display = "none";
-      loadAttendanceReport();
-    }
-    document.getElementById("studentCourse").addEventListener("change", resetDashboard);
-    document.getElementById("studentSemester").addEventListener("change", resetDashboard);
-    document.getElementById("studentDate").addEventListener("change", resetDashboard);
-    // (Optional: if you want to reset on roll number change, add an event listener here)
-
-    // Load the attendance report (for the Report section below the date input)
+    // Load the attendance report (for the report section)
     async function loadAttendanceReport() {
       const course = document.getElementById("studentCourse").value;
       const semester = parseInt(document.getElementById("studentSemester").value, 10);
@@ -224,6 +334,13 @@
       showSpinnerInContainer(reportContainer);
       let reportHTML = `<h3>${course} - Semester ${semester} (Date: ${reportDate})</h3>`;
       reportHTML += `<div class="d-flex flex-wrap">`;
+      const hours = [
+        "9:30-10:30",
+        "10:30-11:30",
+        "11:30-12:30",
+        "1:30-2:30",
+        "2:30-3:30"
+      ];
       for (const hour of hours) {
         const { data, error } = await supabaseClient
           .from("attendance")
@@ -251,40 +368,14 @@
       reportContainer.innerHTML = reportHTML;
     }
 
-    // Toggle details form visibility
-    document.getElementById("toggleDetailsFormBtn").addEventListener("click", () => {
-      const formDiv = document.getElementById("detailsForm");
-      formDiv.style.display = formDiv.style.display === "none" ? "block" : "none";
-    });
-
-    // Toggle date inputs based on duration selection in details form
-    document.getElementById("detailDuration").addEventListener("change", toggleDateInputs);
-    function toggleDateInputs() {
-      const duration = document.getElementById("detailDuration").value;
-      if (duration === "single") {
-        document.getElementById("singleDateDiv").style.display = "block";
-        document.getElementById("multipleDateDiv").style.display = "none";
-      } else {
-        document.getElementById("singleDateDiv").style.display = "none";
-        document.getElementById("multipleDateDiv").style.display = "block";
-      }
-    }
-
-
-
-
-
-
-
-    
     // Load Dashboard on "View Dashboard" button click
     document.getElementById("loadDashboardBtn").addEventListener("click", async function () {
       const btn = this;
       showSpinnerOnButton(btn);
-      resetDashboard()
+      resetDashboard();
       const course = document.getElementById("studentCourse").value;
       const semester = document.getElementById("studentSemester").value;
-      const rollNumber = document.getElementById("studentRoll").value.trim();
+      const rollNumber = rollInput.value.trim();
       if (!course || !semester || !rollNumber) {
         alert("Please fill in all details.");
         hideSpinnerOnButton(btn);
@@ -301,21 +392,20 @@
         hideSpinnerOnButton(btn);
         return;
       }
-      document.getElementById("studentName").textContent = studentData.student_name;
-      document.getElementById("studentRollDisplay").textContent = rollNumber;
-      document.getElementById("studentCourseDisplay").textContent = course;
-      document.getElementById("studentSemesterDisplay").textContent = semester;
+      // Set welcome message with student's name
+      document.getElementById("welcomeMessage").textContent = "Welcome, " + studentData.student_name + "!";
       
-      // Calculate overall percentage using daily points (hourly logic)
+      // Calculate overall attendance percentage using daily points (hourly logic)
       const { data: attendanceData, error: attendanceError } = await supabaseClient
         .from("attendance")
         .select("*")
         .eq("course", course)
         .eq("semester", semester);
       if (attendanceError || !attendanceData.length) {
-        document.getElementById("studentAttendance").textContent = "No attendance records found.";
+        document.getElementById("totalAttendancePercentage").innerHTML = "0%";
+        document.getElementById("totalWorkingDays").textContent = "Working Days: 0";
+        document.getElementById("todayAttendanceStatus").innerHTML = "";
       } else {
-        // Group attendance records by date for this student
         let dailyScores = {};
         attendanceData.forEach((session) => {
           if (session.data && session.data.attendance && session.data.attendance[rollNumber] !== undefined) {
@@ -330,7 +420,6 @@
             }
           }
         });
-
         let totalDays = Object.keys(dailyScores).length;
         let totalPoints = 0;
         for (let date in dailyScores) {
@@ -345,85 +434,80 @@
           }
           totalPoints += dayScore;
         }
-
         let overallPercentage = totalDays > 0 ? ((totalPoints / totalDays) * 100).toFixed(2) : 0;
         let overallColor = overallPercentage < 75 ? "text-danger" : "text-success";
-        let eligibilityMessage = overallPercentage < 75
-          ? "Sorry, you are not eligible to write the next exam!! Please contact your class incharge."
-          : "Congratulations, you are eligible to write the next exam!!";
+        document.getElementById("totalAttendancePercentage").innerHTML = `<span class="${overallColor}">${overallPercentage}%</span>`;
+        document.getElementById("totalWorkingDays").textContent = `Working Days: ${totalDays}`;
 
-        // Compute today's percentage separately
+        // Compute today's attendance for each session and total day score
         const today = new Date().toISOString().split("T")[0];
-        let todayScore = 0;
-        if (dailyScores[today]) {
-          const morning = dailyScores[today].morning;
-          const afternoon = dailyScores[today].afternoon;
-          if (morning.length === 3 && morning.every(val => val === true)) {
-            todayScore += 0.5;
-          }
-          if (afternoon.length === 2 && afternoon.every(val => val === true)) {
-            todayScore += 0.5;
-          }
-        }
-        let todaysPercentage = todayScore * 100;
-
-        // Build today's hourly status
-        const tick = "&#10004;";
-        const cross = "&#10008;";
+        let todayStatusHTML = "";
         function getStatusSymbol(val) {
+          const tick = "&#10004;";
+          const cross = "&#10008;";
           if (val === true) return tick;
           if (val === false) return cross;
-          return "Attendance not taken";
+          return "N/A";
         }
-        let todayStatusHTML = "<strong>Today's Hourly Status:</strong><br>";
         for (let hr of ["9:30-10:30", "10:30-11:30", "11:30-12:30", "1:30-2:30", "2:30-3:30"]) {
-          todayStatusHTML += `${hr}: `;
+          todayStatusHTML += `<div><small>${hr}</small>: `;
           const session = attendanceData.find(s => s.date === today && s.hour === hr);
           if (session && session.data && session.data.attendance && (rollNumber in session.data.attendance)) {
             todayStatusHTML += getStatusSymbol(session.data.attendance[rollNumber]);
           } else {
-            todayStatusHTML += "Attendance not taken";
+            todayStatusHTML += "N/A";
           }
-          todayStatusHTML += "<br>";
+          todayStatusHTML += `</div>`;
         }
-
-        // Build working days info and calculation explanation
-        let workingDaysMessage = `Total Working Days available: ${totalDays}`;
-        let calculationExplanation = `<br><em>Calculation: Each day is worth 1 point.
-           If all 3 morning sessions (9:30-10:30, 10:30-11:30, 11:30-12:30)
-            are attended, 0.5 point is awarded; if both afternoon sessions
-             (1:30-2:30, 2:30-3:30) are attended, 0.5 point is awarded.
-              Daily score is the sum of these points. 
-              Overall percentage = (Sum of daily scores / Total working days) * 100.</em> <br><br> 
-              **please not that the data is fetched
-               from data base which only has the records 
-               from MIIT AttendX Android App!!<br> 
-               For complaints please contact Dr.Linoy Tharakan(DB Admin)<br><br>
-               YOUR FULL ATTENDANCE CAN BE FETCHED FROM BOTTOM OF THE PAGE`;
-
-        // Display results in the dashboard
-        document.getElementById("studentAttendance").innerHTML =
-          `<span class="${overallColor}">${overallPercentage}%</span><br>` +
-          `${workingDaysMessage}<br>` +
-          `Today's Attendance: ${todaysPercentage}%<br>` +
-          `<span class="${overallColor}">${eligibilityMessage}</span><br>` +
-          todayStatusHTML +
-          calculationExplanation;
+        let todayScore = 0;
+        const morningSessions = ["9:30-10:30", "10:30-11:30", "11:30-12:30"];
+        const afternoonSessions = ["1:30-2:30", "2:30-3:30"];
+        const todayAttendanceData = attendanceData.filter(s => s.date === today);
+        const morningAttended = morningSessions.every(hr => {
+          const session = todayAttendanceData.find(s => s.hour === hr);
+          return session && session.data && session.data.attendance && session.data.attendance[rollNumber] === true;
+        });
+        if (morningAttended) {
+          todayScore += 0.5;
+        }
+        const afternoonAttended = afternoonSessions.every(hr => {
+          const session = todayAttendanceData.find(s => s.hour === hr);
+          return session && session.data && session.data.attendance && session.data.attendance[rollNumber] === true;
+        });
+        if (afternoonAttended) {
+          todayScore += 0.5;
+        }
+        todayStatusHTML += `<div class="mt-2"><strong>Total Day Score:</strong> ${todayScore}</div>`;
+        document.getElementById("todayAttendanceStatus").innerHTML = todayStatusHTML;
       }
       document.getElementById("studentDashboard").classList.remove("hidden");
       hideSpinnerOnButton(btn);
     });
 
-    // Refresh Report button (for the report section)
-    document.getElementById("refreshReportBtn").addEventListener("click", loadAttendanceReport);
+    // "See More Details" button opens the overlay
+    document.getElementById("seeMoreDetailsBtn").addEventListener("click", function(){
+      mainContainer.style.display = 'none';
+      // Reset the overlay to its initial state
+      document.getElementById("detailsForm").style.display = 'block';
+      document.getElementById("detailsTableContainer").style.display = 'none';
+      // Reset the overlay buttons
+      document.getElementById("overlayButtons").innerHTML = '<button id="viewDetailsBtn" class="btn btn-primary">View</button> <button id="goBackBtn" class="btn btn-secondary">Go Back</button>';
+      // Attach event listeners to the overlay buttons
+      document.getElementById("viewDetailsBtn").addEventListener("click", fetchAttendanceDetails);
+      document.getElementById("goBackBtn").addEventListener("click", function(){
+          overlay.style.display = 'none';
+          mainContainer.style.display = 'block';
+      });
+      overlay.style.display = 'flex';
+    });
 
-    // Fetch Detailed Attendance for the logged-in student (detailed table)
+    // Fetch Detailed Attendance for the overlay (shows table in the same overlay)
     async function fetchAttendanceDetails() {
-      const fetchBtn = document.getElementById("fetchAttendanceDetailsBtn");
+      const fetchBtn = document.getElementById("viewDetailsBtn");
       showSpinnerOnButton(fetchBtn);
-      const course = document.getElementById("studentCourseDisplay").textContent;
-      const semester = parseInt(document.getElementById("studentSemesterDisplay").textContent, 10);
-      const rollNumber = document.getElementById("studentRollDisplay").textContent.trim();
+      const course = document.getElementById("studentCourse").value;
+      const semester = document.getElementById("studentSemester").value;
+      const rollNumber = rollInput.value.trim();
       const duration = document.getElementById("detailDuration").value;
       let fromDate, toDate;
       if (duration === "single") {
@@ -469,8 +553,7 @@
           if (!dailyAttendance[sessionDate]) {
             dailyAttendance[sessionDate] = { morning: {}, afternoon: {} };
           }
-          const sessionAttendance =
-            session.data && session.data.attendance ? session.data.attendance : {};
+          const sessionAttendance = session.data && session.data.attendance ? session.data.attendance : {};
           if (rollNumber in sessionAttendance) {
             if (morningHours.includes(session.hour)) {
               dailyAttendance[sessionDate].morning[session.hour] = sessionAttendance[rollNumber];
@@ -488,7 +571,7 @@
         }
         let tableHTML = `<caption class="text-center fw-bold fs-5 mb-3">${captionText}</caption>`;
         tableHTML += '<thead class="table-light"><tr><th>Date</th><th>Day Score</th><th>Attendance (Status Codes)</th></tr></thead><tbody>';
-        let totalScore = 0;
+        let totalPoints = 0;
         let totalDays = 0;
         dateColumns.forEach((date) => {
           totalDays++;
@@ -520,15 +603,22 @@
               dayScore += 0.5;
             }
           }
-          totalScore += dayScore;
+          totalPoints += dayScore;
           tableHTML += `<tr><td>${date}</td><td>${dayScore}</td><td>${statusArr.join(", ")}</td></tr>`;
         });
         tableHTML += "</tbody>";
-        const overallPercentage = totalDays > 0 ? ((totalScore / totalDays) * 100).toFixed(2) : 0;
+        const overallPercentage = totalDays > 0 ? ((totalPoints / totalDays) * 100).toFixed(2) : 0;
         tableHTML += `<tfoot><tr><td colspan="3" class="text-end fw-bold">Overall Attendance: ${overallPercentage}%</td></tr></tfoot>`;
+        // Insert the table HTML into the table element in the overlay
         document.getElementById("attendanceDetailsTable").innerHTML = tableHTML;
-        document.getElementById("attendanceDetailsTableContainer").style.display = "block";
-        console.log("Detailed attendance table generated.");
+        document.getElementById("detailsTableContainer").style.display = "block";
+        document.getElementById("detailsForm").style.display = "none";
+        // Replace the overlay buttons with a "Go to Dashboard" button
+        document.getElementById("overlayButtons").innerHTML = '<button id="goToDashboardBtn" class="btn btn-secondary">Go to Dashboard</button>';
+        document.getElementById("goToDashboardBtn").addEventListener("click", function(){
+          overlay.style.display = 'none';
+          mainContainer.style.display = 'block';
+        });
       } catch (err) {
         console.error("Error processing attendance details:", err);
         alert("Error processing data.");
@@ -536,44 +626,9 @@
         hideSpinnerOnButton(fetchBtn);
       }
     }
-    document.getElementById("fetchAttendanceDetailsBtn").addEventListener("click", fetchAttendanceDetails);
 
-    // Export Detailed Attendance to Excel
-    function exportDetailsToExcel() {
-      const table = document.getElementById("attendanceDetailsTable");
-      const worksheet = XLSX.utils.table_to_sheet(table);
-      const workbook = XLSX.utils.book_new();
-      for (let cell in worksheet) {
-        if (cell[0] === "!") continue;
-        const cellObj = worksheet[cell];
-        if (
-          cellObj.v &&
-          typeof cellObj.v === "string" &&
-          cellObj.v.trim().endsWith("%")
-        ) {
-          let num = parseFloat(cellObj.v.replace("%", ""));
-          cellObj.v = num / 100;
-          cellObj.t = "n";
-          cellObj.z = "0.00%";
-        }
-      }
-      const course = document.getElementById("studentCourseDisplay").textContent;
-      const sem = document.getElementById("studentSemesterDisplay").textContent;
-      let fileName = `Individual_Attendance_${course}_Sem${sem}`;
-      const duration = document.getElementById("detailDuration").value;
-      if (duration === "single") {
-        const singleDate = document.getElementById("singleDate").value;
-        fileName += `_${singleDate}`;
-      } else {
-        const fromDate = document.getElementById("fromDate").value;
-        const toDate = document.getElementById("toDate").value;
-        fileName += `_${fromDate}_to_${toDate}`;
-      }
-      fileName += ".xlsx";
-      XLSX.utils.book_append_sheet(workbook, worksheet, "IndividualAttendance");
-      XLSX.writeFile(workbook, fileName);
-    }
-    document.getElementById("exportDetailsToExcelBtn").addEventListener("click", exportDetailsToExcel);
+    // "Refresh Report" button (for the report section)
+    document.getElementById("refreshReportBtn").addEventListener("click", loadAttendanceReport);
 
     // Optionally, load the attendance report on page load
     loadAttendanceReport();
