@@ -50,21 +50,15 @@
       from { opacity: 0.2; }
       to { opacity: 1; }
     }
-    /* Glowing Login Container */
+    /* Login Container */
     .login-container {
       background: #010101;
       padding: 20px;
       border-radius: 10px;
-      box-shadow: 0 0 15px rgba(88, 87, 87, 0.2);
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
       text-align: center;
       width: 90%;
-      max-width: 320px;
-      animation: glow 4s infinite alternate;
-    }
-    @keyframes glow {
-      0%   { box-shadow: 0 0 10px 2px rgba(255, 0, 0, 0.7); }
-      50%  { box-shadow: 0 0 10px 2px rgba(0, 255, 0, 0.7); }
-      100% { box-shadow: 0 0 10px 2px rgba(0, 0, 255, 0.7); }
+      max-width: 350px;
     }
     /* Heading and Text */
     .login-container h2 {
@@ -78,24 +72,28 @@
     }
     /* Form Controls */
     select, input, button {
-      width: 100%;
+      width: 100px;
       padding: 10px;
       margin: 10px 0;
-      border: 1px solid #ffffff;
+      border: 1px solid #f6efb6;
       border-radius: 5px;
-      background: #000000;
-      color: #fff;
+      background: #000;
+      color: #ffffff;
       font-size: 1rem;
+      
     }
     button {
-      background-color: #000000;
-      border: none;
-      cursor: pointer;
-      font-weight: bold;
-      position: relative;
-    }
+  background-color: #000;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  display: block;      /* Make the button a block element */
+  margin: 0 auto;
+  width: 250px;      /* Automatically adjust left/right margins */
+}
+
     button:hover {
-      background-color: #002349;
+      background-color: #333;
     }
     /* Faculty Credentials Container */
     #facultyCredentials {
@@ -130,6 +128,22 @@
       opacity: 0.6;
       cursor: not-allowed;
     }
+    /* Custom Spinner */
+    .spinner {
+      border: 5px solid #ffffff; /* Light gray */
+      border-top: 5px solid #000000; /* White */
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 10px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
@@ -138,8 +152,7 @@
 
   <!-- Login Container -->
   <div class="login-container">
-    <h2>MIIT AttendX</h2>
-    <p>Please select your role to proceed.</p>
+   
     <select id="userType" onchange="handleUserTypeChange()">
       <option value="student">Student</option>
       <option value="faculty">Faculty</option>
@@ -166,12 +179,15 @@
         star.className = "star";
         star.style.top = Math.random() * 100 + "%";
         star.style.left = Math.random() * 100 + "%";
-        star.style.animationDelay = Math.random() * 4 + "s";
+        star.style.animationDelay = Math.random() * 2 + "s";
         starsContainer.appendChild(star);
       }
     }
     document.addEventListener("DOMContentLoaded", function() {
-      generateStars(200); // More stars for better visibility
+      // Adjust the star count for better performance on mobile
+      generateStars(150);
+      // Set initial role view
+      handleUserTypeChange();
       // Enable faculty login button only when password is provided
       const passwordInput = document.getElementById("password");
       const facultyLoginBtn = document.getElementById("facultyLoginBtn");
@@ -209,14 +225,13 @@
     function showSpinnerOnButton(button) {
       button.disabled = true;
       const spinner = document.createElement("span");
-      spinner.className = "spinner-border spinner-border-sm ms-2";
-      spinner.style.verticalAlign = "middle";
+      spinner.className = "spinner";
       spinner.setAttribute("aria-hidden", "true");
       button.appendChild(spinner);
     }
     function hideSpinnerOnButton(button) {
       button.disabled = false;
-      const spinner = button.querySelector(".spinner-border");
+      const spinner = button.querySelector(".spinner");
       if (spinner) {
         spinner.remove();
       }
@@ -228,7 +243,7 @@
       showSpinnerOnButton(btn);
       setTimeout(function() {
         hideSpinnerOnButton(btn);
-        alert("Student authentication successful!");
+        
         window.location.href = "studentinfo.html";
       }, 2000);
     }
@@ -261,8 +276,8 @@
           alert("Faculty authentication successful!");
           window.location.href = "main.html";
         } else {
-          alert("Invalid username or password!");
-          document.getElementById("errorMessage").textContent = "Invalid username or password!";
+          
+          document.getElementById("errorMessage").textContent = "Invalid password!";
         }
       }, 2000);
     }
