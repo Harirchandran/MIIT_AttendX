@@ -447,55 +447,73 @@
     });
 
     /*************** Export Table to Excel Function ******************/
-    function exportTableToExcel() {
-      const table = document.getElementById("marksEntryTable");
-      if (!table) {
-        alert("No table available to export.");
-        return;
+ function exportTableToExcel() {
+  const table = document.getElementById("marksEntryTable");
+  if (!table) {
+    alert("No table available to export.");
+    return;
+  }
+  
+  let data = [];
+  // Get header row data
+  const headerRow = table.querySelector("thead tr");
+  let headerData = [];
+  for (let cell of headerRow.cells) {
+    headerData.push(cell.innerText.trim());
+  }
+  data.push(headerData);
+  
+  // Get body rows data
+  const bodyRows = table.querySelectorAll("tbody tr");
+  bodyRows.forEach(row => {
+    let rowData = [];
+    Array.from(row.cells).forEach(cell => {
+      let input = cell.querySelector("input");
+      if (input) {
+        rowData.push(input.value);
+      } else {
+        rowData.push(cell.innerText.trim());
       }
-      
-      let data = [];
-      // Get header row data
-      const headerRow = table.querySelector("thead tr");
-      let headerData = [];
-      for (let cell of headerRow.cells) {
-        headerData.push(cell.innerText.trim());
-      }
-      data.push(headerData);
-      
-      // Get body rows data
-      const bodyRows = table.querySelectorAll("tbody tr");
-      bodyRows.forEach(row => {
-        let rowData = [];
-        Array.from(row.cells).forEach(cell => {
-          let input = cell.querySelector("input");
-          if (input) {
-            rowData.push(input.value);
-          } else {
-            rowData.push(cell.innerText.trim());
-          }
-        });
-        data.push(rowData);
-      });
-      
-      const ws = XLSX.utils.aoa_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Marks");
-      
-      const course = document.getElementById("internalCourse").value;
-      const semester = document.getElementById("internalSemester").value;
-      const subjectDropdown = document.getElementById("subjectDropdown");
-      const subjectNameRaw = subjectDropdown.options[subjectDropdown.selectedIndex].textContent;
-      const subjectName = subjectNameRaw.split(" (")[0]; // Remove division info if present
-      const today = new Date();
-      const yyyy = today.getFullYear();
-      const mm = String(today.getMonth() + 1).padStart(2, '0');
-      const dd = String(today.getDate()).padStart(2, '0');
-      const dateString = `${yyyy}-${mm}-${dd}`;
-      const fileName = `${course}_sem${semester}_${subjectName}_${dateString}.xlsx`;
-      
-      XLSX.writeFile(wb, fileName);
-    }
+    });
+    data.push(rowData);
+  });
+  
+  // Create worksheet and workbook
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Marks");
+  
+  // Build the file name using course, semester, subject, and today's date
+  const course = document.getElementById("internalCourse").value;
+  const semester = document.getElementById("internalSemester").value;
+  const subjectDropdown = document.getElementById("subjectDropdown");
+  const subjectNameRaw = subjectDropdown.options[subjectDropdown.selectedIndex].textContent;
+  const subjectName = subjectNameRaw.split(" (")[0]; // Remove division info if present
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const dateString = `${yyyy}-${mm}-${dd}`;
+  const fileName = `${course}_sem${semester}_${subjectName}_${dateString}.xlsx`;
+  
+  // Generate a base64-encoded string representation of the workbook
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+  
+  // Create a data URL with the correct MIME type for Excel files
+  const dataUrl = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + wbout;
+  
+  // Ask for confirmation before starting the download
+  if (confirm("Do you want to download the Excel file?")) {
+    // Create a temporary anchor element to trigger the download
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+}
+
   </script>
 </body>
 </html>
