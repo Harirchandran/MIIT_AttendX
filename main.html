@@ -948,9 +948,9 @@ function exportDetailsToExcel() {
     }
   }
 
+  // Build the file name based on form values
   const course = document.getElementById('detailCourse').value;
   const sem = document.getElementById('detailSemester').value;
-
   let fileName = `Individual_Attendance_${course}_Sem${sem}`;
   const duration = document.getElementById('detailDuration').value;
 
@@ -962,13 +962,25 @@ function exportDetailsToExcel() {
     const toDate = document.getElementById('toDate').value;
     fileName += `_${fromDate}_to_${toDate}`;
   }
-
   fileName += ".xlsx";
 
+  // Append the worksheet to the workbook
   XLSX.utils.book_append_sheet(workbook, worksheet, "IndividualAttendance");
-  XLSX.writeFile(workbook, fileName);
-}
 
+  // Generate a base64-encoded string representation of the workbook
+  const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
+  
+  // Create a data URL with the correct MIME type for Excel files
+  const dataUrl = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + wbout;
+
+  // Create a temporary anchor element and trigger the download
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
 
 
     /*************** Attendance Report Functions ******************/
