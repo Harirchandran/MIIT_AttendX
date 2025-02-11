@@ -948,7 +948,7 @@ function exportDetailsToExcel() {
     }
   }
 
-  // Build the file name based on form values
+  // Build the file name based on form values (course, semester, and date details)
   const course = document.getElementById('detailCourse').value;
   const sem = document.getElementById('detailSemester').value;
   let fileName = `Individual_Attendance_${course}_Sem${sem}`;
@@ -973,15 +973,17 @@ function exportDetailsToExcel() {
   // Create a data URL with the correct MIME type for Excel files
   const dataUrl = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + wbout;
 
-  // Create a temporary anchor element and trigger the download
-  const a = document.createElement('a');
-  a.href = dataUrl;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  // Ask the user for confirmation before triggering the download
+  if (confirm("Do you want to download the Excel file?")) {
+    // Create a temporary anchor element and trigger the download
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
 }
-
 
     /*************** Attendance Report Functions ******************/
     const hours = [
